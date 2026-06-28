@@ -26,6 +26,13 @@ class Settings(BaseSettings):
     deepgram_sample_rate: int = 16000
     deepgram_timeout_seconds: float = 20.0
     deepgram_reconnect_attempts: int = 3
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_from_email: str | None = None
+    smtp_from_name: str = "InterviewLoop"
+    smtp_use_tls: bool = True
     code_execution_timeout_seconds: int = 5
     code_execution_memory_limit: str = "128m"
     code_execution_cpu_limit: float = 0.5

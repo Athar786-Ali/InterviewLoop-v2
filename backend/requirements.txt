@@ -21,3 +21,4 @@ ruff==0.15.20
 sqlalchemy==2.0.32
 uvicorn[standard]==0.30.6
 websockets==12.0
+bcrypt

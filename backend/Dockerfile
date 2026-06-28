@@ -6,10 +6,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl docker.io \
-    && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update \
+&& apt-get install -y --no-install-recommends curl docker.io libgl1 libglib2.0-0 \
+&& rm -rf /var/lib/apt/lists/*
+    
 COPY requirements.txt .
 RUN pip install --upgrade pip \
     && pip install -r requirements.txt
@@ -19,7 +20,11 @@ RUN mkdir -p /app/storage/reports
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD curl -fsS http://localhost:8000/api/v1/health || exit 1
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -qO- http://127.0.0.1/health || exit 1
+    
+    
+
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]
