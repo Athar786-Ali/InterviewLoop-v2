@@ -8,7 +8,7 @@ import jwt
 
 from app.core.encryption import SecretCipher
 from app.core.exceptions import AppError
-from app.core.security import JwtService, OtpGenerator, PasswordHasher, RefreshTokenGenerator, TokenHasher
+from app.core.security import JwtService, OtpGenerator, PasswordHasher, RefreshTokenGenerator, TokenHasher, normalize_pem
 
 
 def generate_rsa_key_pair() -> tuple[str, str]:
@@ -78,6 +78,18 @@ def test_jwt_service_creates_decodes_and_rejects_wrong_token_type(monkeypatch):
         JwtService().decode_access_token(wrong_type_token)
 
     assert error.value.code == "INVALID_ACCESS_TOKEN"
+
+
+def test_jwt_service_normalizes_escaped_newline_pem_values(monkeypatch):
+    private_key, public_key = generate_rsa_key_pair()
+    monkeypatch.setattr("app.core.security.settings.jwt_private_key", private_key.replace("\n", "\\n"), raising=False)
+    monkeypatch.setattr("app.core.security.settings.jwt_public_key", public_key.replace("\n", "\\n"), raising=False)
+    monkeypatch.setattr("app.core.security.settings.jwt_algorithm", "RS256", raising=False)
+
+    token, _ = JwtService().create_access_token(uuid4(), uuid4())
+
+    assert JwtService().decode_access_token(token)["type"] == "access"
+    assert normalize_pem(public_key.replace("\n", "\\n")).startswith("-----BEGIN PUBLIC KEY-----")
 
 
 def test_jwt_service_configuration_errors(monkeypatch):

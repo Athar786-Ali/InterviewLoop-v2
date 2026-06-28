@@ -30,8 +30,8 @@ export async function signup(payload: SignupPayload) {
   return response.data.data;
 }
 
-export async function verifyEmail(email: string, otp_code: string) {
-  const response = await apiClient.post<ApiEnvelope<{ verified: boolean }>>("/auth/verify-email", { email, otp_code });
+export async function verifyEmail(email: string, otp: string) {
+  const response = await apiClient.post<ApiEnvelope<{ verified: boolean }>>("/auth/verify-email", { email, otp });
   return response.data.data;
 }
 
@@ -49,10 +49,10 @@ export async function requestPasswordReset(email: string) {
   return response.data.data;
 }
 
-export async function resetPassword(email: string, otp_code: string, new_password: string) {
+export async function resetPassword(email: string, otp: string, new_password: string) {
   const response = await apiClient.post<ApiEnvelope<{ reset: boolean }>>("/auth/reset-password", {
     email,
-    otp_code,
+    otp,
     new_password,
   });
   return response.data.data;

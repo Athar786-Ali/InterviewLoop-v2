@@ -8,6 +8,7 @@ x-backend-env: &backend-env
       required: false
   environment:
     APP_ENV: production
+    AUTO_CREATE_TABLES: "true"
     DATABASE_URL: postgresql+psycopg://interviewloop:interviewloop@postgres:5432/interviewloop
     REDIS_URL: redis://redis:6379/0
     OLLAMA_BASE_URL: http://ollama:11434

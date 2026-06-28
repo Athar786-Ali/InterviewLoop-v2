@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     app_name: str = "InterviewLoop-v2"
     app_env: str = "development"
     api_prefix: str = "/api/v1"
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost"
+    auto_create_tables: bool = False
     database_url: PostgresDsn = "postgresql+psycopg://interviewloop:interviewloop@postgres:5432/interviewloop"
     redis_url: RedisDsn = "redis://redis:6379/0"
     ollama_base_url: str = "http://ollama:11434"
@@ -62,6 +64,10 @@ class Settings(BaseSettings):
     totp_recovery_code_count: int = 10
     totp_recovery_code_bytes: int = 6
     totp_valid_window: int = 1
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
 
 @lru_cache

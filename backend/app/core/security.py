@@ -13,6 +13,12 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def normalize_pem(value: str | None) -> str | None:
+    if not value:
+        return value
+    return value.replace("\\n", "\n").strip()
+
+
 class PasswordHasher:
     def hash(self, password: str) -> str:
         return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
@@ -31,7 +37,8 @@ class TokenHasher:
 
 class JwtService:
     def create_access_token(self, user_id: UUID, session_id: UUID) -> tuple[str, int]:
-        if not settings.jwt_private_key:
+        private_key = normalize_pem(settings.jwt_private_key)
+        if not private_key:
             raise AppError("AUTH_CONFIGURATION_ERROR", "JWT private key is not configured.", 500)
 
         expires_delta = timedelta(minutes=settings.access_token_minutes)
@@ -43,15 +50,16 @@ class JwtService:
             "exp": expires_at,
             "iat": utc_now(),
         }
-        token = jwt.encode(payload, settings.jwt_private_key, algorithm=settings.jwt_algorithm)
+        token = jwt.encode(payload, private_key, algorithm=settings.jwt_algorithm)
         return token, int(expires_delta.total_seconds())
 
     def decode_access_token(self, token: str) -> dict[str, str]:
-        if not settings.jwt_public_key:
+        public_key = normalize_pem(settings.jwt_public_key)
+        if not public_key:
             raise AppError("AUTH_CONFIGURATION_ERROR", "JWT public key is not configured.", 500)
 
         try:
-            payload = jwt.decode(token, settings.jwt_public_key, algorithms=[settings.jwt_algorithm])
+            payload = jwt.decode(token, public_key, algorithms=[settings.jwt_algorithm])
         except jwt.PyJWTError as exc:
             raise AppError("INVALID_ACCESS_TOKEN", "Invalid or expired access token.", 401) from exc
 
