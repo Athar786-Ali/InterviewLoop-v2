@@ -1,0 +1,16 @@
+[tool.ruff]
+line-length = 140
+target-version = "py312"
+exclude = [
+  ".git",
+  ".venv",
+  "frontend",
+  "backend/.pytest_cache",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "B"]
+ignore = ["B008", "B905", "E501", "F821"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]

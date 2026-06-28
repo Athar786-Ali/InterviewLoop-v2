@@ -1,0 +1,80 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy, for example latest or sha-<commit>"
+        required: true
+        default: latest
+  workflow_run:
+    workflows: ["Docker"]
+    types: [completed]
+    branches: ["main"]
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy To Production Host
+    runs-on: ubuntu-latest
+    environment: production
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve Image Tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "value=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=latest" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install SSH Key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.PRODUCTION_SSH_KEY }}
+
+      - name: Trust Production Host
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.PRODUCTION_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Upload Deployment Files
+        run: |
+          ssh "${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }}" "mkdir -p '${{ secrets.PRODUCTION_PATH }}/nginx' '${{ secrets.PRODUCTION_PATH }}/docker'"
+          scp docker-compose.yml "${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }}:${{ secrets.PRODUCTION_PATH }}/docker-compose.yml"
+          scp docker-compose.prod.yml "${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }}:${{ secrets.PRODUCTION_PATH }}/docker-compose.prod.yml"
+          scp nginx/default.conf "${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }}:${{ secrets.PRODUCTION_PATH }}/nginx/default.conf"
+          scp docker/.env.production.example "${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }}:${{ secrets.PRODUCTION_PATH }}/docker/.env.production.example"
+
+      - name: Deploy Stack
+        env:
+          IMAGE_TAG: ${{ steps.tag.outputs.value }}
+          REGISTRY: ghcr.io
+          IMAGE_PREFIX: ${{ github.repository }}
+        run: |
+          ssh "${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }}" <<'EOF'
+          set -euo pipefail
+          cd "${{ secrets.PRODUCTION_PATH }}"
+          test -f .env
+          docker login ghcr.io -u "${{ github.actor }}" -p "${{ secrets.GITHUB_TOKEN }}"
+          export REGISTRY="${REGISTRY}"
+          export IMAGE_PREFIX="${IMAGE_PREFIX}"
+          export IMAGE_TAG="${IMAGE_TAG}"
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+          EOF
+
+      - name: Post Deploy Health Check
+        run: |
+          curl --fail --show-error --retry 10 --retry-delay 6 "${{ secrets.PRODUCTION_HEALTH_URL }}"

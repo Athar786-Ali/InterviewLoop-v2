@@ -1,0 +1,47 @@
+.page {
+  align-items: center;
+  background: #eef4f8;
+  display: grid;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.panel {
+  background: #ffffff;
+  border: 1px solid #dbe5ec;
+  border-radius: 8px;
+  box-shadow: 0 24px 70px rgba(37, 51, 66, 0.12);
+  color: #102033;
+  display: grid;
+  gap: 14px;
+  margin: auto;
+  max-width: 520px;
+  padding: 30px;
+}
+
+.panel h1 {
+  font-size: 1.6rem;
+  margin: 0;
+}
+
+.panel p {
+  color: #5d6d7d;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.panel button {
+  align-items: center;
+  background: #0f8b8d;
+  border: 0;
+  border-radius: 7px;
+  color: #ffffff;
+  cursor: pointer;
+  display: inline-flex;
+  font-weight: 800;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 8px;
+  padding: 12px 16px;
+  width: fit-content;
+}

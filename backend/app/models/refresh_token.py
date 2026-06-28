@@ -11,10 +11,12 @@ class RefreshToken(BaseModel, Base):
     __tablename__ = "refresh_tokens"
     __table_args__ = (
         Index("ix_refresh_tokens_user_id", "user_id"),
+        Index("ix_refresh_tokens_session_id", "session_id"),
         Index("ix_refresh_tokens_token_hash", "token_hash", unique=True),
     )
 
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    session_id: Mapped[UUID] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False)
     token_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     family_id: Mapped[str] = mapped_column(String(96), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -22,3 +24,4 @@ class RefreshToken(BaseModel, Base):
     replaced_by_token_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="refresh_tokens")
+    session: Mapped["Session"] = relationship(back_populates="refresh_tokens")

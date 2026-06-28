@@ -1,0 +1,20 @@
+services:
+  frontend:
+    build: null
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:?IMAGE_PREFIX is required}-frontend:${IMAGE_TAG:-latest}
+
+  backend:
+    build: null
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:?IMAGE_PREFIX is required}-backend:${IMAGE_TAG:-latest}
+
+  celery:
+    build: null
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:?IMAGE_PREFIX is required}-backend:${IMAGE_TAG:-latest}
+
+  celery-beat:
+    build: null
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:?IMAGE_PREFIX is required}-backend:${IMAGE_TAG:-latest}
+
+  flower:
+    build: null
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:?IMAGE_PREFIX is required}-backend:${IMAGE_TAG:-latest}

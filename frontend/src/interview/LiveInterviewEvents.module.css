@@ -1,0 +1,89 @@
+.panel {
+  background: #ffffff;
+  border: 1px solid #dce6ee;
+  border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(36, 52, 71, 0.08);
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.header,
+.controls {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.header span {
+  color: #0f8b8d;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.header h2 {
+  font-size: 18px;
+  margin: 4px 0 0;
+}
+
+.header b {
+  background: #eef3f7;
+  border-radius: 999px;
+  color: #516679;
+  font-size: 12px;
+  padding: 7px 10px;
+}
+
+.header b[data-state="connected"] {
+  background: #e9f8f1;
+  color: #087a5f;
+}
+
+.controls input {
+  border: 1px solid #d8e3eb;
+  border-radius: 8px;
+  min-height: 40px;
+  padding: 0 12px;
+}
+
+.controls button {
+  background: #17202a;
+  border: 0;
+  border-radius: 8px;
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 800;
+  min-height: 40px;
+  padding: 0 12px;
+}
+
+.events {
+  display: grid;
+  gap: 10px;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.events article {
+  background: #f7fafc;
+  border: 1px solid #e2ebf2;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.events pre {
+  color: #536679;
+  font-size: 12px;
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 680px) {
+  .header,
+  .controls {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

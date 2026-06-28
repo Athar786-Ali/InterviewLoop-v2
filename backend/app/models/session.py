@@ -32,3 +32,4 @@ class Session(BaseModel, Base):
     code_executions: Mapped[list["CodeExecution"]] = relationship(
         back_populates="session", cascade="all, delete-orphan"
     )
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(back_populates="session", cascade="all, delete-orphan")

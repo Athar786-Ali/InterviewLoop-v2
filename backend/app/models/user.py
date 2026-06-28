@@ -25,3 +25,7 @@ class User(BaseModel, Base):
         back_populates="user", cascade="all, delete-orphan"
     )
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    face_embeddings: Mapped[list["FaceEmbedding"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    totp_credentials: Mapped[list["TotpCredential"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
