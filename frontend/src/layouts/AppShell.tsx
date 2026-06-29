@@ -1,17 +1,15 @@
-import { BarChart3, Code2, FileText, Fingerprint, LogOut, MessagesSquare, PlayCircle } from "lucide-react";
+import { BarChart3, BrainCircuit, Code2, FileText, LayoutDashboard, LogOut, PlayCircle } from "lucide-react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
-import { clearTokens } from "../auth/authStore";
 import { logout } from "../auth/api";
+import { clearTokens } from "../auth/authStore";
 import styles from "./AppShell.module.css";
 
 const navItems = [
-  { to: "/", label: "Dashboard", icon: BarChart3 },
-  { to: "/interview/setup", label: "Setup", icon: PlayCircle },
-  { to: "/interview/demo-session", label: "Interview", icon: MessagesSquare },
-  { to: "/coding", label: "Coding", icon: Code2 },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
+  { to: "/interview/setup", label: "New Interview", icon: PlayCircle },
+  { to: "/coding", label: "Coding Round", icon: Code2 },
   { to: "/reports", label: "Reports", icon: FileText },
-  { to: "/enrollment", label: "Enrollment", icon: Fingerprint },
 ];
 
 export function AppShell() {
@@ -32,25 +30,50 @@ export function AppShell() {
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
         <NavLink className={styles.brand} to="/">
-          <span>IL</span>
-          <strong>InterviewLoop</strong>
+          <span className={styles.brandIcon}>IL</span>
+          <div>
+            <div className={styles.brandName}>InterviewLoop</div>
+            <div className={styles.brandTagline}>AI Mock Interviews</div>
+          </div>
         </NavLink>
-        <nav className={styles.nav} aria-label="Primary navigation">
+
+        <hr className={styles.divider} />
+        <span className={styles.navSection}>Navigation</span>
+
+        <nav aria-label="Primary navigation">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
-              <NavLink className={({ isActive }) => (isActive ? styles.activeLink : styles.navLink)} key={item.to} to={item.to}>
-                <Icon aria-hidden="true" size={18} />
+              <NavLink
+                className={({ isActive }) => (isActive ? styles.activeLink : styles.navLink)}
+                end={item.end}
+                key={item.to}
+                to={item.to}
+              >
+                <Icon aria-hidden="true" className={styles.navIcon} size={16} />
                 {item.label}
               </NavLink>
             );
           })}
         </nav>
+
+        <hr className={styles.divider} />
+        <span className={styles.navSection}>Analytics</span>
+        <NavLink
+          className={({ isActive }) => (isActive ? styles.activeLink : styles.navLink)}
+          to="/"
+          end
+        >
+          <BarChart3 aria-hidden="true" className={styles.navIcon} size={16} />
+          Performance
+        </NavLink>
+
         <button className={styles.logout} onClick={handleLogout} type="button">
-          <LogOut aria-hidden="true" size={18} />
-          Logout
+          <LogOut aria-hidden="true" size={16} />
+          Sign out
         </button>
       </aside>
+
       <div className={styles.content}>
         <Outlet />
       </div>

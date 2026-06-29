@@ -15,14 +15,6 @@ export type SignupPayload = {
 export type LoginPayload = {
   email: string;
   password: string;
-  mfa_code?: string;
-};
-
-export type TotpSetup = {
-  secret?: string;
-  qr_code_uri?: string;
-  qr_code_png_base64?: string;
-  recovery_codes?: string[];
 };
 
 export async function signup(payload: SignupPayload) {
@@ -55,27 +47,5 @@ export async function resetPassword(email: string, otp: string, new_password: st
     otp,
     new_password,
   });
-  return response.data.data;
-}
-
-export async function setupTotp() {
-  const response = await apiClient.post<ApiEnvelope<TotpSetup>>("/auth/mfa/totp/setup");
-  return response.data.data;
-}
-
-export async function enableTotp(code: string) {
-  const response = await apiClient.post<ApiEnvelope<{ enabled: boolean; recovery_codes?: string[] }>>("/auth/mfa/totp/enable", {
-    code,
-  });
-  return response.data.data;
-}
-
-export async function disableTotp(code: string) {
-  const response = await apiClient.post<ApiEnvelope<{ disabled: boolean }>>("/auth/mfa/totp/disable", { code });
-  return response.data.data;
-}
-
-export async function enrollBiometric(images: string[]) {
-  const response = await apiClient.post<ApiEnvelope<{ enrolled: boolean }>>("/auth/biometric/enroll", { images });
   return response.data.data;
 }

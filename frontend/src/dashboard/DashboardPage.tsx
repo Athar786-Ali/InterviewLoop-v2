@@ -1,3 +1,4 @@
+import { PlayCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
   Area,
@@ -12,10 +13,10 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { Link } from "react-router-dom";
 
 import { fetchAnalyticsDashboard } from "../analytics/api";
 import type { AnalyticsDashboard, TopicTrendPoint } from "../analytics/types";
-import { LiveInterviewEvents } from "../interview/LiveInterviewEvents";
 import styles from "./DashboardPage.module.css";
 
 const fallbackDashboard: AnalyticsDashboard = {
@@ -92,9 +93,12 @@ export function DashboardPage() {
           <h1>Interview performance cockpit</h1>
         </div>
         <div className={styles.headerActions}>
-          <a className={styles.codingLink} href="/coding">Coding round</a>
-          <div className={styles.syncStatus} data-state={status}>
-            {status === "loading" ? "Syncing" : status === "ready" ? "Live data" : "Preview data"}
+          <Link className={styles.ctaButton} to="/interview/setup">
+            <PlayCircle size={14} />
+            New Interview
+          </Link>
+          <div className={styles.syncBadge} data-state={status}>
+            {status === "loading" ? "Syncing…" : status === "ready" ? "Live data" : "Preview data"}
           </div>
         </div>
       </section>
@@ -112,12 +116,12 @@ export function DashboardPage() {
             <h2>Topic radar</h2>
             <span>Score balance</span>
           </div>
-          <ResponsiveContainer width="100%" height={310}>
+          <ResponsiveContainer width="100%" height={300}>
             <RadarChart data={dashboard.radar}>
-              <PolarGrid stroke="#d7e2ea" />
-              <PolarAngleAxis dataKey="topic" tick={{ fill: "#425466", fontSize: 12 }} />
-              <Radar dataKey="score" stroke="#0f8b8d" fill="#0f8b8d" fillOpacity={0.28} />
-              <Tooltip />
+              <PolarGrid stroke="rgba(255,255,255,0.06)" />
+              <PolarAngleAxis dataKey="topic" tick={{ fill: "#8b9eb8", fontSize: 11 }} />
+              <Radar dataKey="score" stroke="#19d4d4" fill="#19d4d4" fillOpacity={0.18} />
+              <Tooltip contentStyle={{ background: "#111827", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, color: "#f0f6fc" }} />
             </RadarChart>
           </ResponsiveContainer>
         </article>
@@ -127,19 +131,19 @@ export function DashboardPage() {
             <h2>Topic trends</h2>
             <span>Recent movement</span>
           </div>
-          <ResponsiveContainer width="100%" height={310}>
+          <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={trendData}>
               <defs>
                 <linearGradient id="trendFill" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="5%" stopColor="#5b7cfa" stopOpacity={0.35} />
-                  <stop offset="95%" stopColor="#5b7cfa" stopOpacity={0.03} />
+                  <stop offset="5%" stopColor="#7c6ff7" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#7c6ff7" stopOpacity={0.01} />
                 </linearGradient>
               </defs>
-              <CartesianGrid stroke="#e5edf3" vertical={false} />
-              <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 12 }} />
-              <YAxis domain={[0, 10]} tick={{ fill: "#64748b", fontSize: 12 }} />
-              <Tooltip />
-              <Area type="monotone" dataKey="score" stroke="#5b7cfa" strokeWidth={3} fill="url(#trendFill)" />
+              <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
+              <XAxis dataKey="date" tick={{ fill: "#4a5568", fontSize: 11 }} />
+              <YAxis domain={[0, 10]} tick={{ fill: "#4a5568", fontSize: 11 }} />
+              <Tooltip contentStyle={{ background: "#111827", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, color: "#f0f6fc" }} />
+              <Area type="monotone" dataKey="score" stroke="#7c6ff7" strokeWidth={2.5} fill="url(#trendFill)" />
             </AreaChart>
           </ResponsiveContainer>
         </article>
@@ -166,8 +170,6 @@ export function DashboardPage() {
           </div>
         </article>
       </section>
-
-      <LiveInterviewEvents />
     </main>
   );
 }
@@ -175,9 +177,9 @@ export function DashboardPage() {
 function Metric({ label, value, helper }: { label: string; value: string; helper: string }) {
   return (
     <article className={styles.metric}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-      <small>{helper}</small>
+      <span className={styles.metricLabel}>{label}</span>
+      <strong className={styles.metricValue}>{value}</strong>
+      <small className={styles.metricHelper}>{helper}</small>
     </article>
   );
 }

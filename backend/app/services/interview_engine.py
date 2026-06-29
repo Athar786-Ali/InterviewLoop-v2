@@ -33,11 +33,18 @@ class InterviewEngineService:
             topic=payload.topic,
             resume_text=payload.resume_text,
             current_difficulty=payload.initial_difficulty,
+            persona=payload.persona,
+            pressure_mode=payload.pressure_mode,
         )
         question = self._generate_question(state)
         state.turns.append({"role": "interviewer", "content": question.question})
         self.memory.save(state)
-        return InterviewStartResponse(session_id=state.session_id, question=question)
+        return InterviewStartResponse(
+            session_id=state.session_id,
+            question=question,
+            persona=state.persona,
+            pressure_mode=state.pressure_mode,
+        )
 
     def answer(self, session_id: str, answer: str) -> InterviewTurnResponse:
         state = self.memory.get(session_id)

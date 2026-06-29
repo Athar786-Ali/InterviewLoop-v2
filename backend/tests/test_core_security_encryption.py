@@ -1,12 +1,10 @@
 from uuid import uuid4
 
 import pytest
-from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 import jwt
 
-from app.core.encryption import SecretCipher
 from app.core.exceptions import AppError
 from app.core.security import JwtService, OtpGenerator, PasswordHasher, RefreshTokenGenerator, TokenHasher, normalize_pem
 
@@ -42,20 +40,6 @@ def test_generators_create_expected_token_shapes():
     assert len(otp) == 6
     assert otp.isdigit()
     assert len(refresh) > 40
-
-
-def test_secret_cipher_encrypts_decrypts_and_rejects_invalid_payload():
-    key = Fernet.generate_key().decode("utf-8")
-    cipher = SecretCipher(key)
-    encrypted = cipher.encrypt("totp-secret")
-
-    assert encrypted != b"totp-secret"
-    assert cipher.decrypt(encrypted) == "totp-secret"
-
-    with pytest.raises(AppError) as error:
-        cipher.decrypt(b"invalid-token")
-
-    assert error.value.code == "MFA_SECRET_DECRYPTION_FAILED"
 
 
 def test_jwt_service_creates_decodes_and_rejects_wrong_token_type(monkeypatch):

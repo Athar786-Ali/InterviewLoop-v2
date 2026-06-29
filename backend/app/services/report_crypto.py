@@ -6,12 +6,15 @@ from cryptography.hazmat.primitives.asymmetric import padding
 
 from app.core.config import settings
 from app.core.exceptions import AppError
+from app.core.security import normalize_pem
 
 
 class ReportSignatureService:
     def __init__(self, private_key_pem: str | None = None, public_key_pem: str | None = None) -> None:
-        self.private_key_pem = private_key_pem if private_key_pem is not None else settings.report_signature_private_key
-        self.public_key_pem = public_key_pem if public_key_pem is not None else settings.report_signature_public_key
+        raw_private = private_key_pem if private_key_pem is not None else settings.report_signature_private_key
+        raw_public = public_key_pem if public_key_pem is not None else settings.report_signature_public_key
+        self.private_key_pem = normalize_pem(raw_private)
+        self.public_key_pem = normalize_pem(raw_public)
 
     def sign(self, content: bytes) -> str:
         if not self.private_key_pem:

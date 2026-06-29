@@ -3,107 +3,79 @@ from uuid import UUID
 
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from redis import Redis
 from sqlalchemy.orm import Session as DbSession
 
-from app.core.config import settings
-from app.core.encryption import SecretCipher
 from app.core.exceptions import AppError
 from app.core.security import JwtService, OtpGenerator, PasswordHasher, RefreshTokenGenerator, TokenHasher
 from app.db.session import get_db
 from app.models.user import User
 from app.repositories.otp_token_repository import OtpTokenRepository
 from app.repositories.analytics_repository import AnalyticsRepository
-from app.repositories.face_embedding_repository import FaceEmbeddingRepository
 from app.repositories.refresh_token_repository import RefreshTokenRepository
 from app.repositories.audit_log_repository import AuditLogRepository
 from app.repositories.report_repository import ReportRepository
 from app.repositories.session_repository import SessionRepository
-from app.repositories.totp_credential_repository import TotpCredentialRepository
 from app.repositories.user_repository import UserRepository
 from app.services.auth_service import AuthService
 from app.services.analytics_service import AnalyticsService
-from app.services.biometric_auth_service import BiometricAuthService
-from app.services.biometric_clients import get_arcface_client, get_liveness_detector
 from app.services.email_service import EmailService
 from app.services.adaptive_difficulty import AdaptiveDifficultyService
-from app.services.conversation_memory import RedisConversationMemory
+from app.services.conversation_memory import ConversationMemory
 from app.services.code_execution_service import CodeExecutionService, DockerSandboxRunner
 from app.services.interview_engine import InterviewEngineService
 from app.services.llm_service import OllamaLLMService
 from app.services.rate_limiter import RateLimiter
+from app.services.hint_engine import HintEngineService
 from app.services.report_crypto import ReportSignatureService
 from app.services.report_pdf import ReportPdfRenderer
 from app.services.report_service import ReportService
-from app.services.totp_service import TotpService
+from app.services.resume_parser import ResumeParserService
 from app.services.deepgram_service import DeepgramStreamingService
 from app.services.speech_service import TypedFallbackService
 
 Db = Annotated[DbSession, Depends(get_db)]
 bearer_scheme = HTTPBearer(auto_error=False)
 
+# Module-level singletons for stateful in-memory services.
+# These are intentionally process-scoped so session memory and rate limit
+# counters persist across requests within the same worker process.
+_rate_limiter = RateLimiter()
+_conversation_memory = ConversationMemory()
 
-def get_redis() -> Redis:
-    return Redis.from_url(str(settings.redis_url), decode_responses=True)
 
-
-def get_auth_service(db: Db, redis_client: Annotated[Redis, Depends(get_redis)]) -> AuthService:
-    token_hasher = TokenHasher()
-    totp_repository = TotpCredentialRepository(db)
-    rate_limiter = RateLimiter(redis_client)
-    totp_service = TotpService(
-        credentials=totp_repository,
-        cipher=SecretCipher(),
-        token_hasher=token_hasher,
-        rate_limiter=rate_limiter,
-    )
+def get_auth_service(db: Db) -> AuthService:
     return AuthService(
         users=UserRepository(db),
         otp_tokens=OtpTokenRepository(db),
         sessions=SessionRepository(db),
         refresh_tokens=RefreshTokenRepository(db),
         passwords=PasswordHasher(),
-        token_hasher=token_hasher,
+        token_hasher=TokenHasher(),
         jwt_service=JwtService(),
         otp_generator=OtpGenerator(),
         refresh_generator=RefreshTokenGenerator(),
         email_service=EmailService(),
-        rate_limiter=rate_limiter,
-        totp_credentials=totp_repository,
-        totp_service=totp_service,
+        rate_limiter=_rate_limiter,
     )
 
 
-def get_biometric_auth_service(db: Db, redis_client: Annotated[Redis, Depends(get_redis)]) -> BiometricAuthService:
-    return BiometricAuthService(
-        users=UserRepository(db),
-        face_embeddings=FaceEmbeddingRepository(db),
-        sessions=SessionRepository(db),
-        refresh_tokens=RefreshTokenRepository(db),
-        arcface_client=get_arcface_client(),
-        liveness_detector=get_liveness_detector(),
-        jwt_service=JwtService(),
-        token_hasher=TokenHasher(),
-        refresh_generator=RefreshTokenGenerator(),
-        rate_limiter=RateLimiter(redis_client),
-    )
-
-
-def get_totp_service(db: Db, redis_client: Annotated[Redis, Depends(get_redis)]) -> TotpService:
-    return TotpService(
-        credentials=TotpCredentialRepository(db),
-        cipher=SecretCipher(),
-        token_hasher=TokenHasher(),
-        rate_limiter=RateLimiter(redis_client),
-    )
-
-
-def get_interview_engine(redis_client: Annotated[Redis, Depends(get_redis)]) -> InterviewEngineService:
+def get_interview_engine() -> InterviewEngineService:
     return InterviewEngineService(
         llm_service=OllamaLLMService(),
-        memory=RedisConversationMemory(redis_client),
+        memory=_conversation_memory,
         difficulty_service=AdaptiveDifficultyService(),
     )
+
+
+def get_hint_engine() -> HintEngineService:
+    return HintEngineService(
+        llm_service=OllamaLLMService(),
+        memory=_conversation_memory,
+    )
+
+
+def get_resume_parser() -> ResumeParserService:
+    return ResumeParserService()
 
 
 def get_deepgram_service() -> DeepgramStreamingService:

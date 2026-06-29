@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import PostgresDsn, RedisDsn
+from pydantic import PostgresDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,7 +13,6 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost"
     auto_create_tables: bool = False
     database_url: PostgresDsn = "postgresql+psycopg://interviewloop:interviewloop@postgres:5432/interviewloop"
-    redis_url: RedisDsn = "redis://redis:6379/0"
     ollama_base_url: str = "http://ollama:11434"
     ollama_model: str = "qwen2.5:7b"
     ollama_timeout_seconds: float = 20.0
@@ -43,8 +42,6 @@ class Settings(BaseSettings):
     report_signature_private_key: str | None = None
     report_signature_public_key: str | None = None
     cleanup_soft_deleted_days: int = 30
-    celery_task_max_retries: int = 3
-    celery_task_retry_backoff_seconds: int = 5
     websocket_heartbeat_seconds: int = 25
     websocket_event_history_limit: int = 50
     websocket_max_reconnect_attempts: int = 5
@@ -56,14 +53,6 @@ class Settings(BaseSettings):
     otp_ttl_minutes: int = 10
     auth_rate_limit_attempts: int = 5
     auth_rate_limit_window_seconds: int = 300
-    face_match_threshold: float = 0.35
-    liveness_min_blinks: int = 1
-    liveness_eye_closed_frames: int = 2
-    totp_issuer_name: str = "InterviewLoop-v2"
-    totp_secret_encryption_key: str | None = None
-    totp_recovery_code_count: int = 10
-    totp_recovery_code_bytes: int = 6
-    totp_valid_window: int = 1
 
     @property
     def cors_origin_list(self) -> list[str]:

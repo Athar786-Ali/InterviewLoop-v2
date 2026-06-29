@@ -1,3 +1,5 @@
+import pytest
+
 from app.core.exceptions import AppError
 from app.schemas.interview import (
     Difficulty,
@@ -5,6 +7,8 @@ from app.schemas.interview import (
     InterviewMode,
     InterviewQuestion,
     InterviewStartRequest,
+    Persona,
+    PressureMode,
 )
 from app.services.adaptive_difficulty import AdaptiveDifficultyService
 from app.services.conversation_memory import ConversationMemory
@@ -18,7 +22,14 @@ class FakeLLM:
 
     def generate_structured(self, prompt, schema):
         if schema is InterviewEvaluation:
-            return InterviewEvaluation(score=9, feedback="Strong answer", strengths=["clear"], weaknesses=[])
+            return InterviewEvaluation(
+                score=9,
+                feedback="Strong answer",
+                strengths=["clear"],
+                weaknesses=[],
+                what_went_well=["Explained the concept clearly", "Used a concrete example"],
+                next_time_try="Consider discussing trade-offs more explicitly",
+            )
         self.question_count += 1
         return InterviewQuestion(
             question=f"Question {self.question_count}?",
@@ -84,3 +95,85 @@ def test_interview_engine_rejects_missing_session():
         assert exc.code == "INTERVIEW_SESSION_NOT_FOUND"
     else:
         raise AssertionError("Expected AppError")
+
+
+def test_interview_engine_stores_persona_in_session_state():
+    memory = ConversationMemory()
+    engine = InterviewEngineService(FakeLLM(), memory, AdaptiveDifficultyService())
+
+    response = engine.start(
+        InterviewStartRequest(mode=InterviewMode.TOPIC, topic="Python", persona=Persona.STARTUP)
+    )
+
+    state = memory.get(response.session_id)
+    assert state.persona == Persona.STARTUP
+    assert response.persona == Persona.STARTUP
+
+
+def test_interview_engine_stores_pressure_mode_in_session_state():
+    memory = ConversationMemory()
+    engine = InterviewEngineService(FakeLLM(), memory, AdaptiveDifficultyService())
+
+    response = engine.start(
+        InterviewStartRequest(
+            mode=InterviewMode.TOPIC,
+            topic="Python",
+            pressure_mode=PressureMode.SIMULATED,
+        )
+    )
+
+    state = memory.get(response.session_id)
+    assert state.pressure_mode == PressureMode.SIMULATED
+    assert response.pressure_mode == PressureMode.SIMULATED
+
+
+def test_interview_engine_evaluation_includes_coaching_fields():
+    memory = ConversationMemory()
+    engine = InterviewEngineService(FakeLLM(), memory, AdaptiveDifficultyService())
+    started = engine.start(InterviewStartRequest(mode=InterviewMode.TOPIC, topic="Python"))
+
+    response = engine.answer(started.session_id, "Dependency injection allows testability.")
+
+    assert response.evaluation.what_went_well == ["Explained the concept clearly", "Used a concrete example"]
+    assert response.evaluation.next_time_try == "Consider discussing trade-offs more explicitly"
+
+
+def test_persona_preamble_appears_in_question_prompt():
+    """Product persona should mention Google/Amazon style."""
+    request = InterviewStartRequest(mode=InterviewMode.TOPIC, topic="Databases", persona=Persona.PRODUCT)
+    memory = ConversationMemory()
+    engine = InterviewEngineService(FakeLLM(), memory, AdaptiveDifficultyService())
+    started = engine.start(request)
+    state = memory.get(started.session_id)
+
+    prompt = render_question_prompt(state, Difficulty.MEDIUM)
+
+    assert "product company" in prompt.lower() or "google" in prompt.lower()
+
+
+def test_practice_pressure_mode_note_appears_in_question_prompt():
+    request = InterviewStartRequest(
+        mode=InterviewMode.TOPIC, topic="Python", pressure_mode=PressureMode.PRACTICE
+    )
+    memory = ConversationMemory()
+    engine = InterviewEngineService(FakeLLM(), memory, AdaptiveDifficultyService())
+    started = engine.start(request)
+    state = memory.get(started.session_id)
+
+    prompt = render_question_prompt(state, Difficulty.EASY)
+
+    assert "Practice" in prompt
+
+
+def test_simulated_pressure_mode_note_appears_in_question_prompt():
+    request = InterviewStartRequest(
+        mode=InterviewMode.TOPIC, topic="Python", pressure_mode=PressureMode.SIMULATED
+    )
+    memory = ConversationMemory()
+    engine = InterviewEngineService(FakeLLM(), memory, AdaptiveDifficultyService())
+    started = engine.start(request)
+    state = memory.get(started.session_id)
+
+    prompt = render_question_prompt(state, Difficulty.HARD)
+
+    assert "Simulated" in prompt

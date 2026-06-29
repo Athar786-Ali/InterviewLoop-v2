@@ -5,14 +5,13 @@ import { NotFoundPage, RouteLoader } from "../components/RouteFallback";
 import { AppShell } from "../layouts/AppShell";
 import { ProtectedRoute } from "./ProtectedRoute";
 
-const LoginPage = lazy(() => import("../auth/LoginPage").then((module) => ({ default: module.LoginPage })));
-const SignupPage = lazy(() => import("../auth/SignupPage").then((module) => ({ default: module.SignupPage })));
-const EnrollmentPage = lazy(() => import("../auth/EnrollmentPage").then((module) => ({ default: module.EnrollmentPage })));
-const DashboardPage = lazy(() => import("../dashboard/DashboardPage").then((module) => ({ default: module.DashboardPage })));
-const InterviewSetupPage = lazy(() => import("../interview/InterviewSetupPage").then((module) => ({ default: module.InterviewSetupPage })));
-const InterviewPage = lazy(() => import("../interview/InterviewPage").then((module) => ({ default: module.InterviewPage })));
-const CodingRoundPage = lazy(() => import("../code_execution/CodingRoundPage").then((module) => ({ default: module.CodingRoundPage })));
-const ReportPage = lazy(() => import("../report/ReportPage").then((module) => ({ default: module.ReportPage })));
+const LoginPage = lazy(() => import("../auth/LoginPage").then((m) => ({ default: m.LoginPage })));
+const SignupPage = lazy(() => import("../auth/SignupPage").then((m) => ({ default: m.SignupPage })));
+const DashboardPage = lazy(() => import("../dashboard/DashboardPage").then((m) => ({ default: m.DashboardPage })));
+const InterviewSetupPage = lazy(() => import("../interview/InterviewSetupPage").then((m) => ({ default: m.InterviewSetupPage })));
+const InterviewPage = lazy(() => import("../interview/InterviewPage").then((m) => ({ default: m.InterviewPage })));
+const CodingRoundPage = lazy(() => import("../code_execution/CodingRoundPage").then((m) => ({ default: m.CodingRoundPage })));
+const ReportPage = lazy(() => import("../report/ReportPage").then((m) => ({ default: m.ReportPage })));
 
 function withSuspense(element: ReactElement) {
   return <Suspense fallback={<RouteLoader />}>{element}</Suspense>;
@@ -36,10 +35,6 @@ export const router = createBrowserRouter([
           {
             path: "/",
             element: withSuspense(<DashboardPage />),
-          },
-          {
-            path: "/enrollment",
-            element: withSuspense(<EnrollmentPage />),
           },
           {
             path: "/interview/setup",

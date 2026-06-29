@@ -3,7 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
 
-from app.api.v1.dependencies import get_auth_service, get_biometric_auth_service, get_current_user, get_totp_service
+from app.api.v1.dependencies import get_auth_service, get_current_user
 from app.models.user import User
 from app.schemas.auth import (
     AuthUserRead,
@@ -17,24 +17,8 @@ from app.schemas.auth import (
     SignupRequest,
     TokenPair,
 )
-from app.schemas.biometric import (
-    BiometricEnrollmentRead,
-    BiometricEnrollmentRequest,
-    BiometricLoginRequest,
-    BiometricLoginResponse,
-)
 from app.schemas.common import ApiResponse
-from app.schemas.totp import (
-    TotpDisableRequest,
-    TotpEnableRequest,
-    TotpSetupRequest,
-    TotpSetupResponse,
-    TotpStatusResponse,
-    TotpVerifyRequest,
-)
 from app.services.auth_service import AuthService
-from app.services.biometric_auth_service import BiometricAuthService
-from app.services.totp_service import TotpService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -121,70 +105,3 @@ def revoke_session(
 ) -> ApiResponse[None]:
     auth_service.revoke_session(current_user, session_id)
     return ApiResponse(message="Session revoked.")
-
-
-@router.post("/biometric/enroll", response_model=ApiResponse[BiometricEnrollmentRead])
-def enroll_biometric(
-    payload: BiometricEnrollmentRequest,
-    biometric_service: Annotated[BiometricAuthService, Depends(get_biometric_auth_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
-) -> ApiResponse[BiometricEnrollmentRead]:
-    enrollment = biometric_service.enroll(current_user, payload.images)
-    return ApiResponse(data=BiometricEnrollmentRead.model_validate(enrollment), message="Biometric enrollment complete.")
-
-
-@router.post("/biometric/login", response_model=ApiResponse[BiometricLoginResponse])
-def biometric_login(
-    payload: BiometricLoginRequest,
-    biometric_service: Annotated[BiometricAuthService, Depends(get_biometric_auth_service)],
-) -> ApiResponse[BiometricLoginResponse]:
-    tokens = biometric_service.login(
-        email=payload.email,
-        face_image=payload.face_image,
-        liveness_frames=payload.liveness_frames,
-    )
-    return ApiResponse(data=BiometricLoginResponse.model_validate(tokens), message="Biometric login successful.")
-
-
-@router.post("/mfa/totp/setup", response_model=ApiResponse[TotpSetupResponse])
-def setup_totp(
-    payload: TotpSetupRequest,
-    totp_service: Annotated[TotpService, Depends(get_totp_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
-) -> ApiResponse[TotpSetupResponse]:
-    return ApiResponse(data=totp_service.setup(current_user, payload.label), message="TOTP setup created.")
-
-
-@router.post("/mfa/totp/enable", response_model=ApiResponse[TotpStatusResponse])
-def enable_totp(
-    payload: TotpEnableRequest,
-    totp_service: Annotated[TotpService, Depends(get_totp_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
-) -> ApiResponse[TotpStatusResponse]:
-    return ApiResponse(data=totp_service.enable(current_user, payload.code), message="TOTP enabled.")
-
-
-@router.post("/mfa/totp/verify", response_model=ApiResponse[TotpStatusResponse])
-def verify_totp(
-    payload: TotpVerifyRequest,
-    totp_service: Annotated[TotpService, Depends(get_totp_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
-) -> ApiResponse[TotpStatusResponse]:
-    return ApiResponse(data=totp_service.verify(current_user, payload.code), message="TOTP verified.")
-
-
-@router.post("/mfa/totp/disable", response_model=ApiResponse[TotpStatusResponse])
-def disable_totp(
-    payload: TotpDisableRequest,
-    totp_service: Annotated[TotpService, Depends(get_totp_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
-) -> ApiResponse[TotpStatusResponse]:
-    return ApiResponse(data=totp_service.disable(current_user, payload.code), message="TOTP disabled.")
-
-
-@router.get("/mfa/totp/status", response_model=ApiResponse[TotpStatusResponse])
-def totp_status(
-    totp_service: Annotated[TotpService, Depends(get_totp_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
-) -> ApiResponse[TotpStatusResponse]:
-    return ApiResponse(data=totp_service.status(current_user))

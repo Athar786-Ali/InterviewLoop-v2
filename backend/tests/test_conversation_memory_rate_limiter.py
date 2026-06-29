@@ -1,31 +1,11 @@
-import json
+import time
 
 import pytest
 
 from app.core.exceptions import AppError
 from app.schemas.interview import Difficulty, InterviewMode, InterviewSessionState
-from app.services.conversation_memory import ConversationMemory, RedisConversationMemory
+from app.services.conversation_memory import ConversationMemory
 from app.services.rate_limiter import RateLimiter
-
-
-class FakeRedis:
-    def __init__(self, values=None):
-        self.values = values or {}
-        self.expired_keys = []
-        self.counts = {}
-
-    def set(self, key, value):
-        self.values[key] = value
-
-    def get(self, key):
-        return self.values.get(key)
-
-    def incr(self, key):
-        self.counts[key] = self.counts.get(key, 0) + 1
-        return self.counts[key]
-
-    def expire(self, key, ttl):
-        self.expired_keys.append((key, ttl))
 
 
 def make_state(session_id="session-1"):
@@ -50,40 +30,66 @@ def test_in_memory_conversation_memory_trims_sliding_window():
     assert memory.get("session-1") is state
 
 
-def test_redis_conversation_memory_serializes_and_restores_state():
-    redis = FakeRedis()
-    memory = RedisConversationMemory(redis, window_size=2)
-    state = make_state("redis-session")
-    state.turns = [{"role": "user", "content": "old"}, {"role": "assistant", "content": "new"}]
-
-    memory.save(state)
-    restored = memory.get("redis-session")
-
-    assert restored is not None
-    assert restored.session_id == "redis-session"
-    assert restored.turns[-1]["content"] == "new"
-    assert json.loads(redis.values["interview:memory:redis-session"])["session_id"] == "redis-session"
+def test_in_memory_conversation_memory_get_returns_none_for_unknown_session():
+    memory = ConversationMemory()
+    assert memory.get("unknown-session") is None
 
 
-def test_redis_conversation_memory_raises_for_missing_append():
-    memory = RedisConversationMemory(FakeRedis(), window_size=2)
+def test_in_memory_conversation_memory_save_and_retrieve():
+    memory = ConversationMemory(window_size=4)
+    state = make_state("session-abc")
+    saved = memory.save(state)
+    retrieved = memory.get("session-abc")
 
-    with pytest.raises(KeyError):
-        memory.append_turn("missing", "user", "answer")
+    assert saved is retrieved
+    assert retrieved.session_id == "session-abc"
 
 
-def test_rate_limiter_sets_expiry_and_blocks_after_limit(monkeypatch):
-    redis = FakeRedis()
+def test_rate_limiter_allows_requests_within_limit(monkeypatch):
+    monkeypatch.setattr("app.services.rate_limiter.settings.auth_rate_limit_attempts", 3, raising=False)
+    monkeypatch.setattr("app.services.rate_limiter.settings.auth_rate_limit_window_seconds", 60, raising=False)
+    limiter = RateLimiter()
+
+    # These should not raise
+    limiter.check("auth:login:user@example.com")
+    limiter.check("auth:login:user@example.com")
+    limiter.check("auth:login:user@example.com")
+
+
+def test_rate_limiter_blocks_after_limit_exceeded(monkeypatch):
     monkeypatch.setattr("app.services.rate_limiter.settings.auth_rate_limit_attempts", 2, raising=False)
-    monkeypatch.setattr("app.services.rate_limiter.settings.auth_rate_limit_window_seconds", 30, raising=False)
-    limiter = RateLimiter(redis)
+    monkeypatch.setattr("app.services.rate_limiter.settings.auth_rate_limit_window_seconds", 60, raising=False)
+    limiter = RateLimiter()
 
-    limiter.check("auth:login")
-    limiter.check("auth:login")
-
-    assert redis.expired_keys == [("auth:login", 30)]
+    limiter.check("auth:login:blocked@example.com")
+    limiter.check("auth:login:blocked@example.com")
 
     with pytest.raises(AppError) as error:
-        limiter.check("auth:login")
+        limiter.check("auth:login:blocked@example.com")
 
     assert error.value.code == "RATE_LIMITED"
+
+
+def test_rate_limiter_uses_separate_counters_per_key(monkeypatch):
+    monkeypatch.setattr("app.services.rate_limiter.settings.auth_rate_limit_attempts", 1, raising=False)
+    monkeypatch.setattr("app.services.rate_limiter.settings.auth_rate_limit_window_seconds", 60, raising=False)
+    limiter = RateLimiter()
+
+    limiter.check("key:a")  # first call on key:a — passes
+
+    with pytest.raises(AppError):
+        limiter.check("key:a")  # second call on key:a — blocked
+
+    limiter.check("key:b")  # first call on key:b — passes (separate counter)
+
+
+def test_rate_limiter_resets_after_window_expires(monkeypatch):
+    monkeypatch.setattr("app.services.rate_limiter.settings.auth_rate_limit_attempts", 1, raising=False)
+    monkeypatch.setattr("app.services.rate_limiter.settings.auth_rate_limit_window_seconds", 0, raising=False)
+    limiter = RateLimiter()
+
+    limiter.check("expiry:key")  # passes
+    time.sleep(0.01)  # window of 0 seconds expires immediately
+
+    # Window has expired — counter resets, this should pass again
+    limiter.check("expiry:key")

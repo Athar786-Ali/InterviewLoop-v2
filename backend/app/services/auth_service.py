@@ -12,12 +12,10 @@ from app.models.user import User
 from app.repositories.otp_token_repository import OtpTokenRepository
 from app.repositories.refresh_token_repository import RefreshTokenRepository
 from app.repositories.session_repository import SessionRepository
-from app.repositories.totp_credential_repository import TotpCredentialRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import LoginRequest, ResetPasswordRequest, SignupRequest, TokenPair
 from app.services.email_service import EmailService
 from app.services.rate_limiter import RateLimiter
-from app.services.totp_service import TotpService
 
 EMAIL_VERIFICATION_PURPOSE = "email_verification"
 PASSWORD_RESET_PURPOSE = "password_reset"
@@ -37,8 +35,6 @@ class AuthService:
         refresh_generator: RefreshTokenGenerator,
         email_service: EmailService,
         rate_limiter: RateLimiter,
-        totp_credentials: TotpCredentialRepository | None = None,
-        totp_service: TotpService | None = None,
     ) -> None:
         self.users = users
         self.otp_tokens = otp_tokens
@@ -51,8 +47,6 @@ class AuthService:
         self.refresh_generator = refresh_generator
         self.email_service = email_service
         self.rate_limiter = rate_limiter
-        self.totp_credentials = totp_credentials
-        self.totp_service = totp_service
 
     def signup(self, payload: SignupRequest) -> User:
         email = payload.email.lower()
@@ -88,7 +82,6 @@ class AuthService:
             raise AppError("USER_INACTIVE", "This account is inactive.", status.HTTP_403_FORBIDDEN)
         if not user.is_email_verified:
             raise AppError("EMAIL_NOT_VERIFIED", "Verify your email before logging in.", status.HTTP_403_FORBIDDEN)
-        self._verify_mfa_if_enabled(user, payload.mfa_code)
 
         session = self.sessions.create(user_id=user.id, session_id=uuid4().hex, started_at=utc_now())
         return self._issue_token_pair(user, session)
@@ -196,18 +189,6 @@ class AuthService:
             refresh_token=f"{refresh_token.id}.{refresh_secret}",
             expires_in=expires_in,
         )
-
-    def _verify_mfa_if_enabled(self, user: User, mfa_code: str | None) -> None:
-        if not self.totp_credentials or not self.totp_service:
-            return
-
-        credential = self.totp_credentials.get_enabled_by_user(user.id)
-        if not credential:
-            return
-        if not mfa_code:
-            raise AppError("MFA_REQUIRED", "TOTP MFA code is required.", status.HTTP_403_FORBIDDEN)
-        if not self.totp_service.verify_credential_code(credential, mfa_code):
-            raise AppError("INVALID_MFA_CODE", "Invalid MFA code.", status.HTTP_401_UNAUTHORIZED)
 
     def _get_refresh_token(self, raw_refresh_token: str) -> RefreshToken:
         token_id, _ = self._parse_refresh_token(raw_refresh_token)

@@ -10,7 +10,6 @@ x-backend-env: &backend-env
     APP_ENV: production
     AUTO_CREATE_TABLES: "true"
     DATABASE_URL: postgresql+psycopg://interviewloop:interviewloop@postgres:5432/interviewloop
-    REDIS_URL: redis://redis:6379/0
     OLLAMA_BASE_URL: http://ollama:11434
     REPORT_STORAGE_DIR: /app/storage/reports
     DOCKER_HOST: unix:///var/run/docker.sock
@@ -22,8 +21,6 @@ x-backend-image: &backend-image
 
 x-backend-depends: &backend-depends
   postgres:
-    condition: service_healthy
-  redis:
     condition: service_healthy
 
 services:
@@ -108,72 +105,6 @@ services:
     networks:
       - data
 
-  redis:
-    image: redis:7-alpine
-    command: redis-server --appendonly yes --save 60 1000
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
-    ports:
-      - "127.0.0.1:6379:6379"
-    restart: unless-stopped
-    volumes:
-      - redis_data:/data
-    networks:
-      - data
-
-  celery:
-    <<: [*backend-image, *backend-env]
-    command: celery -A app.workers.celery_app.celery_app worker --loglevel=info --queues=default,analytics,email,maintenance,reports --hostname=worker@%h
-    depends_on: *backend-depends
-    healthcheck:
-      test: ["CMD-SHELL", "celery -A app.workers.celery_app.celery_app inspect ping --timeout=10 | grep -q pong"]
-      interval: 30s
-      timeout: 15s
-      retries: 3
-      start_period: 45s
-    restart: unless-stopped
-    volumes:
-      - backend_reports:/app/storage/reports
-    networks:
-      - app
-      - data
-
-  celery-beat:
-    <<: [*backend-image, *backend-env]
-    command: celery -A app.workers.celery_app.celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
-    depends_on: *backend-depends
-    restart: unless-stopped
-    volumes:
-      - celery_beat_data:/tmp
-    networks:
-      - data
-
-  flower:
-    <<: [*backend-image, *backend-env]
-    command: celery -A app.workers.celery_app.celery_app flower --address=0.0.0.0 --port=5555 --persistent=True --db=/data/flower.db
-    depends_on:
-      redis:
-        condition: service_healthy
-      celery:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:5555/ || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
-    ports:
-      - "127.0.0.1:5555:5555"
-    restart: unless-stopped
-    volumes:
-      - flower_data:/data
-    networks:
-      - data
-
   ollama:
     image: ollama/ollama:latest
     healthcheck:
@@ -192,11 +123,8 @@ services:
 
 volumes:
   backend_reports:
-  celery_beat_data:
-  flower_data:
   ollama_data:
   postgres_data:
-  redis_data:
 
 networks:
   public:

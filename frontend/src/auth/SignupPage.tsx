@@ -1,4 +1,4 @@
-import { ShieldCheck, UserPlus } from "lucide-react";
+import { Mail, ShieldCheck, UserPlus } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -13,13 +13,17 @@ export function SignupPage() {
   const [otp, setOtp] = useState("");
   const [isOtpReady, setOtpReady] = useState(false);
   const [isSubmitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   async function handleSignup(event: FormEvent) {
     event.preventDefault();
     setSubmitting(true);
+    setError("");
     try {
       await signup({ full_name: fullName, email, password });
       setOtpReady(true);
+    } catch {
+      setError("Could not create account. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -27,9 +31,12 @@ export function SignupPage() {
 
   async function handleVerify() {
     setSubmitting(true);
+    setError("");
     try {
       await verifyEmail(email, otp);
       navigate("/login", { replace: true });
+    } catch {
+      setError("Invalid OTP. Check your email and try again.");
     } finally {
       setSubmitting(false);
     }
@@ -38,42 +45,109 @@ export function SignupPage() {
   return (
     <main className={styles.page}>
       <section className={`${styles.card} ${styles.split}`}>
+        {/* ── Brand hero ── */}
         <aside className={styles.intro}>
-          <span>Secure onboarding</span>
-          <h1>Start with email verification.</h1>
-          <p>Signup keeps identity, sessions, refresh tokens, and MFA ready for the interview workflow.</p>
+          <span className={styles.introKicker}>Join InterviewLoop</span>
+          <h1>Start your interview prep journey.</h1>
+          <p>
+            Create a free account and get instant access to AI-powered mock interviews with
+            adaptive difficulty, Socratic hints, and coaching-grade feedback.
+          </p>
+          <div className={styles.featurePills}>
+            {[
+              { emoji: "🧠", label: "AI personas: FAANG, Service Co., Startup" },
+              { emoji: "📄", label: "Resume-aware questions from your experience" },
+              { emoji: "📊", label: "Performance analytics with topic radar" },
+              { emoji: "🔒", label: "Signed, verifiable interview reports" },
+            ].map(({ emoji, label }) => (
+              <div className={styles.featurePill} key={label}>
+                <span className={styles.featurePillIcon}>{emoji}</span>
+                <span className={styles.featurePillText}>{label}</span>
+              </div>
+            ))}
+          </div>
         </aside>
+
+        {/* ── Signup form ── */}
         <form className={styles.form} onSubmit={handleSignup}>
-          <h2>Create account</h2>
+          <div>
+            <h2 className={styles.formTitle}>Create account</h2>
+            <p className={styles.formSubtitle}>Free forever. No credit card required.</p>
+          </div>
+
           <label className={styles.field}>
-            <span>Full name</span>
-            <input autoComplete="name" onChange={(event) => setFullName(event.target.value)} required value={fullName} />
+            <span className={styles.fieldLabel}>Full name</span>
+            <input
+              autoComplete="name"
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Jane Smith"
+              required
+              value={fullName}
+            />
           </label>
+
           <label className={styles.field}>
-            <span>Email</span>
-            <input autoComplete="email" onChange={(event) => setEmail(event.target.value)} required type="email" value={email} />
+            <span className={styles.fieldLabel}>Email address</span>
+            <input
+              autoComplete="email"
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              required
+              type="email"
+              value={email}
+            />
           </label>
+
           <label className={styles.field}>
-            <span>Password</span>
-            <input autoComplete="new-password" onChange={(event) => setPassword(event.target.value)} required type="password" value={password} />
+            <span className={styles.fieldLabel}>Password</span>
+            <input
+              autoComplete="new-password"
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+              type="password"
+              value={password}
+            />
           </label>
-          <button className={styles.primary} disabled={isSubmitting} type="submit">
-            <UserPlus aria-hidden="true" size={18} />
-            {isSubmitting ? "Creating..." : "Create account"}
-          </button>
-          {isOtpReady && (
+
+          {!isOtpReady ? (
+            <button className={styles.primary} disabled={isSubmitting} id="signup-submit" type="submit">
+              <UserPlus aria-hidden="true" size={16} />
+              {isSubmitting ? "Creating account…" : "Create account"}
+            </button>
+          ) : (
             <>
+              <p className={styles.status}>
+                <Mail size={14} style={{ display: "inline", marginRight: 6, verticalAlign: "middle" }} />
+                Check your inbox — we sent a 6-digit verification code.
+              </p>
               <label className={styles.field}>
-                <span>Email OTP</span>
-                <input inputMode="numeric" onChange={(event) => setOtp(event.target.value)} value={otp} />
+                <span className={styles.fieldLabel}>Verification code</span>
+                <input
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
+                  maxLength={6}
+                  onChange={(e) => setOtp(e.target.value)}
+                  placeholder="123456"
+                  value={otp}
+                />
               </label>
-              <button className={styles.secondary} disabled={isSubmitting} onClick={handleVerify} type="button">
-                <ShieldCheck aria-hidden="true" size={18} />
-                Verify email
+              <button
+                className={styles.primary}
+                disabled={isSubmitting || otp.length < 6}
+                id="verify-email"
+                onClick={handleVerify}
+                type="button"
+              >
+                <ShieldCheck aria-hidden="true" size={16} />
+                {isSubmitting ? "Verifying…" : "Verify email"}
               </button>
             </>
           )}
-          <Link className={styles.link} to="/login">Already have an account?</Link>
+
+          <Link className={styles.link} to="/login">Already have an account? Sign in →</Link>
+
+          {error && <p className={styles.error}>{error}</p>}
         </form>
       </section>
     </main>

@@ -138,28 +138,9 @@ class FakeRateLimiter:
         return None
 
 
-class FakeTotpCredentials:
-    def __init__(self):
-        self.credential = None
-
-    def get_enabled_by_user(self, user_id):
-        if self.credential and self.credential.user_id == user_id:
-            return self.credential
-        return None
-
-
-class FakeTotpService:
-    def __init__(self, valid_code="123123"):
-        self.valid_code = valid_code
-
-    def verify_credential_code(self, credential, code):
-        return code == self.valid_code
-
-
 @pytest.fixture
 def auth_context():
-    email = FakeEmailService()
-    totp_credentials = FakeTotpCredentials()
+    email_service = FakeEmailService()
     service = AuthService(
         users=FakeUsers(),
         otp_tokens=FakeOtpTokens(),
@@ -170,16 +151,14 @@ def auth_context():
         jwt_service=FakeJwtService(),
         otp_generator=FakeOtpGenerator(),
         refresh_generator=FakeRefreshGenerator(),
-        email_service=email,
+        email_service=email_service,
         rate_limiter=FakeRateLimiter(),
-        totp_credentials=totp_credentials,
-        totp_service=FakeTotpService(),
     )
-    return service, email, totp_credentials
+    return service, email_service
 
 
 def test_signup_creates_user_and_sends_email_verification_otp(auth_context):
-    service, email, _ = auth_context
+    service, email = auth_context
 
     user = service.signup(
         SignupRequest(email="Candidate@Example.com", password="very-secure-password", full_name="Candidate")
@@ -191,7 +170,7 @@ def test_signup_creates_user_and_sends_email_verification_otp(auth_context):
 
 
 def test_verify_email_consumes_otp_and_marks_user_verified(auth_context):
-    service, _, _ = auth_context
+    service, _ = auth_context
     user = service.signup(SignupRequest(email="candidate@example.com", password="very-secure-password"))
 
     verified = service.verify_email("candidate@example.com", "123456")
@@ -201,7 +180,7 @@ def test_verify_email_consumes_otp_and_marks_user_verified(auth_context):
 
 
 def test_login_rejects_unverified_email(auth_context):
-    service, _, _ = auth_context
+    service, _ = auth_context
     service.signup(SignupRequest(email="candidate@example.com", password="very-secure-password"))
 
     with pytest.raises(AppError) as error:
@@ -211,7 +190,7 @@ def test_login_rejects_unverified_email(auth_context):
 
 
 def test_login_issues_access_and_refresh_tokens_for_verified_user(auth_context):
-    service, _, _ = auth_context
+    service, _ = auth_context
     service.signup(SignupRequest(email="candidate@example.com", password="very-secure-password"))
     service.verify_email("candidate@example.com", "123456")
 
@@ -222,40 +201,12 @@ def test_login_issues_access_and_refresh_tokens_for_verified_user(auth_context):
     assert tokens.expires_in == 900
 
 
-def test_login_requires_mfa_code_when_totp_enabled(auth_context):
-    service, _, totp_credentials = auth_context
-    user = service.signup(SignupRequest(email="candidate@example.com", password="very-secure-password"))
+def test_login_rejects_wrong_password(auth_context):
+    service, _ = auth_context
+    service.signup(SignupRequest(email="candidate@example.com", password="very-secure-password"))
     service.verify_email("candidate@example.com", "123456")
-    totp_credentials.credential = SimpleNamespace(user_id=user.id)
 
     with pytest.raises(AppError) as error:
-        service.login(LoginRequest(email="candidate@example.com", password="very-secure-password"))
+        service.login(LoginRequest(email="candidate@example.com", password="wrong-password"))
 
-    assert error.value.code == "MFA_REQUIRED"
-
-
-def test_login_rejects_invalid_mfa_code(auth_context):
-    service, _, totp_credentials = auth_context
-    user = service.signup(SignupRequest(email="candidate@example.com", password="very-secure-password"))
-    service.verify_email("candidate@example.com", "123456")
-    totp_credentials.credential = SimpleNamespace(user_id=user.id)
-
-    with pytest.raises(AppError) as error:
-        service.login(
-            LoginRequest(email="candidate@example.com", password="very-secure-password", mfa_code="000000")
-        )
-
-    assert error.value.code == "INVALID_MFA_CODE"
-
-
-def test_login_accepts_valid_mfa_code(auth_context):
-    service, _, totp_credentials = auth_context
-    user = service.signup(SignupRequest(email="candidate@example.com", password="very-secure-password"))
-    service.verify_email("candidate@example.com", "123456")
-    totp_credentials.credential = SimpleNamespace(user_id=user.id)
-
-    tokens = service.login(
-        LoginRequest(email="candidate@example.com", password="very-secure-password", mfa_code="123123")
-    )
-
-    assert tokens.access_token.startswith("access:")
+    assert error.value.code == "INVALID_CREDENTIALS"

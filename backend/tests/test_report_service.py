@@ -105,3 +105,18 @@ def test_report_pdf_renderer_outputs_pdf_bytes():
     pdf = ReportPdfRenderer().render({"average_score": 7.5, "status": "completed"})
 
     assert pdf.startswith(b"%PDF")
+
+
+def test_report_signature_service_normalizes_escaped_newline_pem_values():
+    private_pem, public_pem = key_pair()
+    # Simulate keys stored with literal "\n" sequences (as in docker-compose .env files)
+    escaped_private = private_pem.replace("\n", "\\n")
+    escaped_public = public_pem.replace("\n", "\\n")
+
+    signer = ReportSignatureService(escaped_private, escaped_public)
+    content = b"test report content"
+    signature = signer.sign(content)
+
+    assert signer.verify(content, signature) is True
+    assert not signer.verify(b"tampered content", signature)
+
