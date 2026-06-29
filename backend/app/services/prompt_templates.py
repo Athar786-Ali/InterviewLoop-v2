@@ -2,6 +2,21 @@ from app.schemas.interview import Difficulty, InterviewMode, Persona, PressureMo
 
 
 # ---------------------------------------------------------------------------
+# Behavioral interviewer preamble (Phase 2.2)
+# ---------------------------------------------------------------------------
+
+BEHAVIORAL_PREAMBLE = (
+    "You are an experienced HR interviewer conducting a behavioral interview using the STAR method "
+    "(Situation, Task, Action, Result). Ask scenario-based questions about past experiences, "
+    "teamwork, conflict resolution, leadership, and problem-solving. "
+    "Do NOT ask technical or coding questions. "
+    "When evaluating answers, assess how well the candidate structures their response: "
+    "Did they describe a clear Situation? A specific Task? Concrete Actions? Measurable Results? "
+    "Be encouraging but expect real examples, not generic platitudes."
+)
+
+
+# ---------------------------------------------------------------------------
 # Persona preambles — injected before every question prompt
 # ---------------------------------------------------------------------------
 
@@ -68,8 +83,12 @@ Return only valid JSON with this exact shape:
 # ---------------------------------------------------------------------------
 
 def render_question_prompt(state: InterviewSessionState, difficulty: Difficulty) -> str:
-    persona_preamble = _PERSONA_PREAMBLES[state.persona]
-    context = _mode_context(state.mode, state.topic, state.resume_text)
+    # Use behavioral preamble for behavioral mode; otherwise use persona preamble
+    if state.mode == InterviewMode.BEHAVIORAL:
+        persona_preamble = BEHAVIORAL_PREAMBLE
+    else:
+        persona_preamble = _PERSONA_PREAMBLES[state.persona]
+    context = _mode_context(state.mode, state.topic, state.resume_text, state.jd_text)
     memory = _render_memory(state)
     pressure_note = (
         "This is a Practice session — be encouraging and educational."
@@ -142,11 +161,19 @@ Provide exactly one short Socratic hint.
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _mode_context(mode: InterviewMode, topic: str | None, resume_text: str | None) -> str:
+def _mode_context(mode: InterviewMode, topic: str | None, resume_text: str | None, jd_text: str | None = None) -> str:
     if mode == InterviewMode.TOPIC:
         return f"Focus only on topic: {topic or 'general software engineering'}."
     if mode == InterviewMode.RESUME:
         return f"Ask from this resume content:\n{resume_text or 'No resume content provided.'}"
+    if mode == InterviewMode.BEHAVIORAL:
+        return "Ask STAR-method behavioral questions about past work experiences and soft skills."
+    if mode == InterviewMode.JOB_DESCRIPTION:
+        return (
+            f"Ask questions aligned with the following job description. "
+            f"Weight heavily toward skills, tools, and responsibilities explicitly mentioned in it.\n"
+            f"Job Description:\n{jd_text or 'No job description provided.'}"
+        )
     return (
         f"Blend topic and resume. Topic: {topic or 'general software engineering'}.\n"
         f"Resume:\n{resume_text or 'No resume content provided.'}"

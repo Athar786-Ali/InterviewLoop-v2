@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     auto_create_tables: bool = False
     database_url: PostgresDsn = "postgresql+psycopg://interviewloop:interviewloop@postgres:5432/interviewloop"
     ollama_base_url: str = "http://ollama:11434"
-    ollama_model: str = "qwen2.5:7b"
-    ollama_timeout_seconds: float = 20.0
+    ollama_model: str = "qwen2.5:3b"   # 3b fits in MacBook Air RAM; override with OLLAMA_MODEL env
+    ollama_timeout_seconds: float = 120.0  # 7b needs up to 60s on first load; 3b is faster
     ollama_retry_attempts: int = 3
     interview_memory_window: int = 8
     adaptive_score_window: int = 3

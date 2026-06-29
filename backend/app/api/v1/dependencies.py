@@ -16,6 +16,8 @@ from app.repositories.audit_log_repository import AuditLogRepository
 from app.repositories.report_repository import ReportRepository
 from app.repositories.session_repository import SessionRepository
 from app.repositories.user_repository import UserRepository
+from app.repositories.question_log_repository import QuestionLogRepository
+from app.repositories.topic_performance_repository import TopicPerformanceRepository
 from app.services.auth_service import AuthService
 from app.services.analytics_service import AnalyticsService
 from app.services.email_service import EmailService
@@ -59,11 +61,14 @@ def get_auth_service(db: Db) -> AuthService:
     )
 
 
-def get_interview_engine() -> InterviewEngineService:
+def get_interview_engine(db: Db) -> InterviewEngineService:
     return InterviewEngineService(
         llm_service=OllamaLLMService(),
         memory=_conversation_memory,
         difficulty_service=AdaptiveDifficultyService(),
+        session_repo=SessionRepository(db),
+        question_log_repo=QuestionLogRepository(db),
+        topic_perf_repo=TopicPerformanceRepository(db),
     )
 
 

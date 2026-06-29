@@ -1,7 +1,7 @@
 import io
+from uuid import uuid4
 
-from app.api.v1.dependencies import get_hint_engine, get_interview_engine, get_resume_parser
-from app.core.exceptions import AppError
+from app.api.v1.dependencies import get_current_user, get_hint_engine, get_interview_engine, get_resume_parser
 from app.main import create_app
 from app.schemas.interview import (
     Difficulty,
@@ -9,6 +9,7 @@ from app.schemas.interview import (
     InterviewEvaluation,
     InterviewQuestion,
     InterviewStartResponse,
+    InterviewSummary,
     InterviewTurnResponse,
     Persona,
     PressureMode,
@@ -16,9 +17,14 @@ from app.schemas.interview import (
 from fastapi.testclient import TestClient
 
 
+class FakeUser:
+    def __init__(self):
+        self.id = uuid4()
+
+
 class FakeInterviewEngine:
     def __init__(self, pressure_mode=PressureMode.PRACTICE):
-        from app.schemas.interview import InterviewSessionState, InterviewMode
+        from app.schemas.interview import InterviewMode, InterviewSessionState
         self._state = InterviewSessionState(
             session_id="session-1",
             mode=InterviewMode.TOPIC,
@@ -28,7 +34,7 @@ class FakeInterviewEngine:
         )
         self.memory = _FakeMemory(self._state)
 
-    def start(self, payload):
+    def start(self, payload, user):
         return InterviewStartResponse(
             session_id="session-1",
             question=InterviewQuestion(
@@ -41,7 +47,7 @@ class FakeInterviewEngine:
             pressure_mode=payload.pressure_mode,
         )
 
-    def answer(self, session_id, answer):
+    def answer(self, session_id, answer, user, elapsed_seconds=None):
         return InterviewTurnResponse(
             evaluation=InterviewEvaluation(
                 score=8,
@@ -58,6 +64,14 @@ class FakeInterviewEngine:
                 expected_signals=["mocks"],
             ),
             next_difficulty=Difficulty.HARD,
+        )
+
+    def end(self, session_id, user):
+        return InterviewSummary(
+            session_id=session_id,
+            overall_average_score=8.0,
+            total_questions=1,
+            encouraging_message="Great session!",
         )
 
 
@@ -84,11 +98,25 @@ class FakeResumeParser:
         return text.strip()
 
 
-def test_start_interview_route_returns_structured_question():
-    app = create_app()
-    app.dependency_overrides[get_interview_engine] = lambda: FakeInterviewEngine()
-    client = TestClient(app)
+# ---------------------------------------------------------------------------
+# Test setup helper
+# ---------------------------------------------------------------------------
 
+def _client_with_auth(engine_pressure_mode=PressureMode.PRACTICE):
+    app = create_app()
+    app.dependency_overrides[get_current_user] = lambda: FakeUser()
+    app.dependency_overrides[get_interview_engine] = lambda: FakeInterviewEngine(engine_pressure_mode)
+    app.dependency_overrides[get_hint_engine] = lambda: FakeHintEngine()
+    app.dependency_overrides[get_resume_parser] = lambda: FakeResumeParser()
+    return TestClient(app)
+
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+def test_start_interview_route_returns_structured_question():
+    client = _client_with_auth()
     response = client.post("/api/v1/interviews/start", json={"mode": "topic", "topic": "Python"})
 
     assert response.status_code == 200
@@ -97,10 +125,7 @@ def test_start_interview_route_returns_structured_question():
 
 
 def test_start_interview_route_returns_persona_and_pressure_mode():
-    app = create_app()
-    app.dependency_overrides[get_interview_engine] = lambda: FakeInterviewEngine()
-    client = TestClient(app)
-
+    client = _client_with_auth()
     response = client.post(
         "/api/v1/interviews/start",
         json={"mode": "topic", "topic": "Python", "persona": "startup", "pressure_mode": "simulated"},
@@ -112,10 +137,7 @@ def test_start_interview_route_returns_persona_and_pressure_mode():
 
 
 def test_answer_interview_route_returns_evaluation_and_next_question():
-    app = create_app()
-    app.dependency_overrides[get_interview_engine] = lambda: FakeInterviewEngine()
-    client = TestClient(app)
-
+    client = _client_with_auth()
     response = client.post("/api/v1/interviews/answer", json={"session_id": "session-1", "answer": "Use services."})
 
     assert response.status_code == 200
@@ -124,10 +146,7 @@ def test_answer_interview_route_returns_evaluation_and_next_question():
 
 
 def test_answer_route_returns_coaching_fields():
-    app = create_app()
-    app.dependency_overrides[get_interview_engine] = lambda: FakeInterviewEngine()
-    client = TestClient(app)
-
+    client = _client_with_auth()
     response = client.post("/api/v1/interviews/answer", json={"session_id": "session-1", "answer": "DI is great."})
     eval_data = response.json()["data"]["evaluation"]
 
@@ -135,13 +154,19 @@ def test_answer_route_returns_coaching_fields():
     assert eval_data["next_time_try"] == "Add a concrete example next time"
 
 
-def test_hint_route_returns_hint_in_practice_mode():
-    app = create_app()
-    engine = FakeInterviewEngine(pressure_mode=PressureMode.PRACTICE)
-    app.dependency_overrides[get_interview_engine] = lambda: engine
-    app.dependency_overrides[get_hint_engine] = lambda: FakeHintEngine()
-    client = TestClient(app)
+def test_end_interview_route_returns_summary():
+    client = _client_with_auth()
+    response = client.post("/api/v1/interviews/session-1/end")
 
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["session_id"] == "session-1"
+    assert data["overall_average_score"] == 8.0
+    assert data["encouraging_message"] == "Great session!"
+
+
+def test_hint_route_returns_hint_in_practice_mode():
+    client = _client_with_auth(engine_pressure_mode=PressureMode.PRACTICE)
     response = client.post(
         "/api/v1/interviews/hint",
         json={"session_id": "session-1", "current_question": "Explain SOLID principles."},
@@ -154,12 +179,7 @@ def test_hint_route_returns_hint_in_practice_mode():
 
 
 def test_hint_route_blocked_in_simulated_mode():
-    app = create_app()
-    engine = FakeInterviewEngine(pressure_mode=PressureMode.SIMULATED)
-    app.dependency_overrides[get_interview_engine] = lambda: engine
-    app.dependency_overrides[get_hint_engine] = lambda: FakeHintEngine()
-    client = TestClient(app)
-
+    client = _client_with_auth(engine_pressure_mode=PressureMode.SIMULATED)
     response = client.post(
         "/api/v1/interviews/hint",
         json={"session_id": "session-1", "current_question": "Explain SOLID principles."},
@@ -170,12 +190,7 @@ def test_hint_route_blocked_in_simulated_mode():
 
 
 def test_hint_route_returns_404_for_unknown_session():
-    app = create_app()
-    engine = FakeInterviewEngine(pressure_mode=PressureMode.PRACTICE)
-    app.dependency_overrides[get_interview_engine] = lambda: engine
-    app.dependency_overrides[get_hint_engine] = lambda: FakeHintEngine()
-    client = TestClient(app)
-
+    client = _client_with_auth()
     response = client.post(
         "/api/v1/interviews/hint",
         json={"session_id": "no-such-session", "current_question": "What is X?"},
@@ -185,10 +200,7 @@ def test_hint_route_returns_404_for_unknown_session():
 
 
 def test_upload_resume_route_returns_extracted_text_from_pdf():
-    app = create_app()
-    app.dependency_overrides[get_resume_parser] = lambda: FakeResumeParser()
-    client = TestClient(app)
-
+    client = _client_with_auth()
     fake_pdf = io.BytesIO(b"%PDF-1.4 fake content")
     response = client.post(
         "/api/v1/interviews/upload-resume",
@@ -202,10 +214,7 @@ def test_upload_resume_route_returns_extracted_text_from_pdf():
 
 
 def test_upload_resume_route_accepts_plain_text():
-    app = create_app()
-    app.dependency_overrides[get_resume_parser] = lambda: FakeResumeParser()
-    client = TestClient(app)
-
+    client = _client_with_auth()
     response = client.post(
         "/api/v1/interviews/upload-resume",
         data={"text": "  Jane Smith — Backend Engineer  "},
@@ -216,10 +225,7 @@ def test_upload_resume_route_accepts_plain_text():
 
 
 def test_upload_resume_route_returns_422_when_nothing_provided():
-    app = create_app()
-    app.dependency_overrides[get_resume_parser] = lambda: FakeResumeParser()
-    client = TestClient(app)
-
+    client = _client_with_auth()
     response = client.post("/api/v1/interviews/upload-resume")
 
     assert response.status_code == 422

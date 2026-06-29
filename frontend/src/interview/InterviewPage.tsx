@@ -1,6 +1,6 @@
 import { BrainCircuit, ChevronRight, Lightbulb, Loader2, Send, ShieldAlert, Sparkles, Target } from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { type FormEvent, useEffect, useState, useRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 
 import { type AnswerResult, type InterviewQuestion, type Persona, type PressureMode, requestHint, submitInterviewAnswer } from "./api";
 import styles from "./InterviewWorkspace.module.css";
@@ -12,6 +12,7 @@ type SessionState = {
   question: InterviewQuestion;
   persona: Persona;
   pressure_mode: PressureMode;
+  is_warmup?: boolean;
 };
 
 const PERSONA_LABELS: Record<Persona, string> = {
@@ -38,6 +39,32 @@ export function InterviewPage() {
   const [isHinting, setHinting] = useState(false);
   const [questionCount, setQuestionCount] = useState(1);
 
+  // Phase 2.5: Timer
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const timerRef = useRef<number | null>(null);
+  const navigate = useNavigate();
+
+  // Start/stop timer when question changes or submission happens
+  useEffect(() => {
+    if (question && !isSubmitting && !result) {
+      setElapsedSeconds(0);
+      timerRef.current = window.setInterval(() => {
+        setElapsedSeconds((prev) => prev + 1);
+      }, 1000);
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [question, isSubmitting, result]);
+
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
   useEffect(() => {
     const cached = sessionStorage.getItem(`interview:${sessionId}:state`);
     if (cached) {
@@ -59,7 +86,7 @@ export function InterviewPage() {
     setHint("");
     setSubmitError("");
     try {
-      const next = await submitInterviewAnswer(sessionId, answer);
+      const next = await submitInterviewAnswer(sessionId, answer, elapsedSeconds);
       setResult(next);
       setAnswer("");
       setQuestionCount((c) => c + 1);
@@ -98,6 +125,7 @@ export function InterviewPage() {
 
   const isSimulated = sessionState?.pressure_mode === "simulated";
   const diffColor = question ? DIFFICULTY_COLORS[question.difficulty] ?? "var(--text-secondary)" : "var(--text-secondary)";
+  const isWarmup = sessionState?.is_warmup && questionCount === 1;
 
   return (
     <main className={styles.page}>
@@ -125,6 +153,13 @@ export function InterviewPage() {
           <span className={styles.badge} style={{ borderColor: diffColor, color: diffColor }}>
             {question?.difficulty ?? "medium"}
           </span>
+          <button 
+            className={styles.headerBtn}
+            onClick={() => navigate(`/interview/${sessionId}/summary`)}
+            type="button"
+          >
+            End Interview
+          </button>
         </div>
       </header>
 
@@ -134,7 +169,10 @@ export function InterviewPage() {
         <aside className={styles.questionPanel}>
           <div className={styles.questionBadge}>
             <Target size={14} />
-            Q{questionCount}
+            {isWarmup ? "Icebreaker" : `Q${questionCount}`}
+          </div>
+          <div className={styles.timerBadge}>
+            ⏱️ {formatTime(elapsedSeconds)}
           </div>
           {question?.topic && (
             <span className={styles.questionTopic}>{question.topic}</span>
@@ -233,6 +271,22 @@ export function InterviewPage() {
                 <ChevronRight size={14} />
                 Next difficulty: <strong>{result.next_difficulty}</strong>
               </div>
+
+              {/* Phase 2.6: Speech analytics */}
+              {(result.evaluation.filler_count !== undefined || result.evaluation.words_per_minute) && (
+                <div className={styles.speechMetrics}>
+                  {result.evaluation.filler_count !== undefined && (
+                    <span title="Filler words detected (um, like, etc.)">
+                      🗣️ Fillers: {result.evaluation.filler_count}
+                    </span>
+                  )}
+                  {result.evaluation.words_per_minute && (
+                    <span title="Words per minute (speaking pace)">
+                      ⏱️ Pace: {result.evaluation.words_per_minute} WPM
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </section>

@@ -38,8 +38,12 @@ def test_code_execution_runtime_route_returns_supported_languages():
 
 
 def test_code_execution_run_route_returns_result():
+    from app.api.v1.dependencies import get_current_user
+    from uuid import uuid4
+    from types import SimpleNamespace
     app = create_app()
     app.dependency_overrides[get_code_execution_service] = lambda: FakeCodeExecutionService()
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=uuid4())
     client = TestClient(app)
 
     response = client.post(

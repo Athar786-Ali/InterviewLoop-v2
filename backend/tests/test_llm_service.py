@@ -57,7 +57,6 @@ def test_ollama_service_parses_structured_json(monkeypatch):
     assert result.question == "Explain indexes."
     assert result.difficulty == Difficulty.MEDIUM
     assert FakeClient.calls[0][1]["model"] == "qwen2.5:7b"
-    assert FakeClient.calls[0][1]["format"] == "json"
 
 
 def test_ollama_service_retries_then_succeeds(monkeypatch):

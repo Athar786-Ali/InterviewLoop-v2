@@ -8,6 +8,21 @@ from app.db.base import Base, BaseModel
 
 
 class Session(BaseModel, Base):
+    """Dual-purpose session table.
+
+    This table serves two related but distinct roles:
+      1. Auth sessions — created on every successful login by ``AuthService``.
+         These have ``interview_type="auth"`` and are used for refresh-token
+         housekeeping and audit logging.
+      2. Interview sessions — created by ``InterviewEngineService.start()``.
+         These have ``interview_type`` set to the ``InterviewMode`` value
+         (e.g. "topic", "resume", "behavioral") and track the full lifecycle
+         of a mock interview run (started_at → completed_at), linking to
+         ``QuestionLog`` and ``TopicPerformance`` rows.
+
+    When querying, always filter by ``interview_type`` to avoid mixing the two.
+    """
+
     __tablename__ = "sessions"
     __table_args__ = (
         Index("ix_sessions_session_id", "session_id", unique=True),

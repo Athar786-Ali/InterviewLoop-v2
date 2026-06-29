@@ -1,5 +1,3 @@
-import io
-import struct
 
 import pytest
 

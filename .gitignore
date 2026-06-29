@@ -16,3 +16,5 @@ dist/
 
 
 
+test_integration.db
+test_out.txt

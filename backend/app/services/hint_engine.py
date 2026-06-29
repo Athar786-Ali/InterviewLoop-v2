@@ -1,3 +1,5 @@
+from pydantic import BaseModel as _BaseModel
+
 from app.core.exceptions import AppError
 from app.schemas.interview import HintResponse, InterviewSessionState
 from app.services.conversation_memory import InterviewMemory
@@ -11,10 +13,6 @@ class _HintLLMResponse:
 
     class _Schema(BaseModel):
         hint: str
-
-
-# Use a module-level alias so the Pydantic model is clean
-from pydantic import BaseModel as _BaseModel
 
 
 class _HintSchema(_BaseModel):

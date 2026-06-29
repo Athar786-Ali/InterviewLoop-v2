@@ -24,6 +24,29 @@ class SessionRepository:
         self.db.refresh(session)
         return session
 
+    def create_interview_session(
+        self, user_id: UUID, session_id: str, interview_type: str, started_at: datetime
+    ) -> Session:
+        """Create a row for a real interview run (interview_type = InterviewMode value)."""
+        session = Session(
+            user_id=user_id,
+            session_id=session_id,
+            interview_type=interview_type,
+            status="active",
+            started_at=started_at,
+        )
+        self.db.add(session)
+        self.db.commit()
+        self.db.refresh(session)
+        return session
+
+    def get_by_session_id(self, session_id: str) -> Session | None:
+        statement = select(Session).where(
+            Session.session_id == session_id,
+            Session.deleted_at.is_(None),
+        )
+        return self.db.scalar(statement)
+
     def list_active_by_user(self, user_id: UUID) -> list[Session]:
         statement = select(Session).where(
             Session.user_id == user_id,

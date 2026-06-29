@@ -15,6 +15,8 @@ const MODES: { value: InterviewMode; label: string; emoji: string; sub: string }
   { value: "topic", label: "Topic", emoji: "🎯", sub: "Choose a focus area" },
   { value: "resume", label: "Resume", emoji: "📄", sub: "From your experience" },
   { value: "mixed", label: "Mixed", emoji: "🔀", sub: "Topic + Resume blend" },
+  { value: "behavioral", label: "Behavioral", emoji: "🤝", sub: "STAR method & soft skills" },
+  { value: "job_description", label: "Role Match", emoji: "💼", sub: "Paste a job posting" },
 ];
 
 const DIFFICULTIES: { value: Difficulty; label: string }[] = [
@@ -66,6 +68,7 @@ export function InterviewSetupPage() {
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [topic, setTopic] = useState("Arrays");
   const [resumeText, setResumeText] = useState("");
+  const [jdText, setJdText] = useState("");
   const [persona, setPersona] = useState<Persona>("product");
   const [pressureMode, setPressureMode] = useState<PressureMode>("practice");
   const [isStarting, setStarting] = useState(false);
@@ -98,8 +101,9 @@ export function InterviewSetupPage() {
       const result = await startInterview({
         mode,
         initial_difficulty: difficulty,
-        topic: mode !== "resume" ? topic : undefined,
+        topic: (mode !== "resume" && mode !== "behavioral" && mode !== "job_description") ? topic : undefined,
         resume_text: (mode === "resume" || mode === "mixed") ? resumeText : undefined,
+        jd_text: mode === "job_description" ? jdText : undefined,
         persona,
         pressure_mode: pressureMode,
       });
@@ -118,6 +122,8 @@ export function InterviewSetupPage() {
   }
 
   const needsResume = mode === "resume" || mode === "mixed";
+  const needsTopic = mode !== "resume" && mode !== "behavioral" && mode !== "job_description";
+  const needsJd = mode === "job_description";
 
   return (
     <main className={styles.page}>
@@ -199,7 +205,7 @@ export function InterviewSetupPage() {
           </div>
 
           {/* Topic Picker */}
-          {mode !== "resume" && (
+          {needsTopic && (
             <div className={styles.section}>
               <span className={styles.sectionLabel}>Topic Focus</span>
               {/* Track tabs */}
@@ -299,6 +305,22 @@ export function InterviewSetupPage() {
             </div>
           )}
 
+          {/* Job Description */}
+          {needsJd && (
+            <div className={styles.section}>
+              <span className={styles.sectionLabel}>Job Description</span>
+              <label className={styles.field}>
+                <span className={styles.fieldLabel}>Paste the job requirements</span>
+                <textarea
+                  onChange={(e) => setJdText(e.target.value)}
+                  placeholder="Paste the job description or role requirements here..."
+                  value={jdText}
+                  style={{ minHeight: "150px" }}
+                />
+              </label>
+            </div>
+          )}
+
           {error && (
             <div className={styles.errorBanner}>
               <span>⚠️</span> {error}
@@ -335,7 +357,7 @@ export function InterviewSetupPage() {
           <div className={styles.infoCard}>
             <p className={styles.infoTitle}>⚙️ Powered by</p>
             <div className={styles.techStack}>
-              {["Ollama", "Qwen2.5:7b", "FastAPI", "pypdf", "Structured Output"].map((t) => (
+              {["Ollama", "Qwen2.5:3b", "FastAPI", "pypdf", "Structured Output"].map((t) => (
                 <span className={styles.techPill} key={t}>{t}</span>
               ))}
             </div>

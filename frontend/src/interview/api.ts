@@ -2,7 +2,7 @@ import { apiClient } from "../api/client";
 
 type ApiEnvelope<T> = { data: T };
 
-export type InterviewMode = "topic" | "resume" | "mixed";
+export type InterviewMode = "topic" | "resume" | "mixed" | "behavioral" | "job_description";
 export type Difficulty    = "easy" | "medium" | "hard";
 export type Persona       = "service" | "product" | "startup";
 export type PressureMode  = "practice" | "simulated";
@@ -11,6 +11,7 @@ export type StartInterviewPayload = {
   mode: InterviewMode;
   topic?: string;
   resume_text?: string;
+  jd_text?: string;
   initial_difficulty?: Difficulty;
   persona?: Persona;
   pressure_mode?: PressureMode;
@@ -30,6 +31,8 @@ export type InterviewEvaluation = {
   weaknesses: string[];
   what_went_well: string[];
   next_time_try: string;
+  filler_count?: number;
+  words_per_minute?: number | null;
 };
 
 export type StartInterviewResponse = {
@@ -37,6 +40,7 @@ export type StartInterviewResponse = {
   question: InterviewQuestion;
   persona: Persona;
   pressure_mode: PressureMode;
+  is_warmup: boolean;
 };
 
 export type AnswerResult = {
@@ -50,13 +54,40 @@ export type HintResult = {
   hint: string;
 };
 
+export type TopicBreakdown = {
+  topic: string;
+  average_score: number;
+  questions_attempted: number;
+  weak_area_count: number;
+};
+
+export type InterviewSummary = {
+  session_id: string;
+  overall_average_score: number;
+  total_questions: number;
+  topics: TopicBreakdown[];
+  top_strengths: string[];
+  top_weaknesses: string[];
+  encouraging_message: string;
+  score_delta: number | null;
+};
+
 export async function startInterview(payload: StartInterviewPayload): Promise<StartInterviewResponse> {
   const response = await apiClient.post<ApiEnvelope<StartInterviewResponse>>("/interviews/start", payload);
   return response.data.data;
 }
 
-export async function submitInterviewAnswer(session_id: string, answer: string): Promise<AnswerResult> {
-  const response = await apiClient.post<ApiEnvelope<AnswerResult>>("/interviews/answer", { session_id, answer });
+export async function submitInterviewAnswer(session_id: string, answer: string, elapsed_seconds?: number): Promise<AnswerResult> {
+  const response = await apiClient.post<ApiEnvelope<AnswerResult>>("/interviews/answer", { 
+    session_id, 
+    answer,
+    elapsed_seconds
+  });
+  return response.data.data;
+}
+
+export async function endInterview(session_id: string): Promise<InterviewSummary> {
+  const response = await apiClient.post<ApiEnvelope<InterviewSummary>>(`/interviews/${session_id}/end`);
   return response.data.data;
 }
 

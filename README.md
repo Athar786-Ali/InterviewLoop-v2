@@ -8,7 +8,15 @@ The project is intentionally structured like a real product system: clear servic
 
 - Production FastAPI architecture with SQLAlchemy, Pydantic v2, PostgreSQL, Redis, and Celery
 - React 19 frontend with Vite, React Router, Axios interceptors, CSS Modules, protected routes, loading states, error boundaries, and toast notifications
-- AI interview engine using Ollama with `qwen2.5:7b`, prompt templates, memory, retry, timeout, and structured output handling
+- AI interview engine using Ollama with `qwen2.5:3b`, prompt templates, memory, retry, timeout, and structured output handling
+
+| AI | Ollama, Qwen2.5:3b |
+
+Pull the Ollama model:
+
+```bash
+docker compose exec ollama ollama pull qwen2.5:3b
+```
 - Secure auth flows: signup, OTP email verification, bcrypt password hashing, RS256 JWTs, refresh tokens, sessions, logout, reset password, rate limiting
 - MFA and biometric authentication using TOTP, encrypted secrets, recovery codes, DeepFace ArcFace, OpenCV, and blink-based liveness checks
 - Real-time systems: Deepgram WebSocket transcription, typed fallback, FastAPI WebSocket interview events, heartbeat, reconnect, cleanup

@@ -2,14 +2,16 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 
-from app.api.v1.dependencies import get_hint_engine, get_interview_engine, get_resume_parser
+from app.api.v1.dependencies import get_current_user, get_hint_engine, get_interview_engine, get_resume_parser
 from app.core.exceptions import AppError
+from app.models.user import User
 from app.schemas.common import ApiResponse
 from app.schemas.interview import (
     HintRequest,
     HintResponse,
     InterviewStartRequest,
     InterviewStartResponse,
+    InterviewSummary,
     InterviewTurnRequest,
     InterviewTurnResponse,
     PressureMode,
@@ -25,16 +27,36 @@ router = APIRouter(prefix="/interviews", tags=["interviews"])
 def start_interview(
     payload: InterviewStartRequest,
     engine: Annotated[InterviewEngineService, Depends(get_interview_engine)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> ApiResponse[InterviewStartResponse]:
-    return ApiResponse(data=engine.start(payload), message="Interview started.")
+    return ApiResponse(data=engine.start(payload, current_user), message="Interview started.")
 
 
 @router.post("/answer", response_model=ApiResponse[InterviewTurnResponse])
 def submit_answer(
     payload: InterviewTurnRequest,
     engine: Annotated[InterviewEngineService, Depends(get_interview_engine)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> ApiResponse[InterviewTurnResponse]:
-    return ApiResponse(data=engine.answer(payload.session_id, payload.answer), message="Answer evaluated.")
+    return ApiResponse(
+        data=engine.answer(
+            payload.session_id,
+            payload.answer,
+            current_user,
+            payload.elapsed_seconds,
+        ),
+        message="Answer evaluated.",
+    )
+
+
+@router.post("/{session_id}/end", response_model=ApiResponse[InterviewSummary])
+def end_interview(
+    session_id: str,
+    engine: Annotated[InterviewEngineService, Depends(get_interview_engine)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> ApiResponse[InterviewSummary]:
+    """Mark the interview complete and return a full performance summary."""
+    return ApiResponse(data=engine.end(session_id, current_user), message="Interview complete.")
 
 
 @router.post("/hint", response_model=ApiResponse[HintResponse])
@@ -42,6 +64,7 @@ def request_hint(
     payload: HintRequest,
     engine: Annotated[InterviewEngineService, Depends(get_interview_engine)],
     hint_engine: Annotated[HintEngineService, Depends(get_hint_engine)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> ApiResponse[HintResponse]:
     """Return a Socratic hint for the current question.
 

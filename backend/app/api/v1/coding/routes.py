@@ -5,8 +5,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
-from app.api.v1.dependencies import get_code_execution_service
+from app.api.v1.dependencies import get_code_execution_service, get_current_user
 from app.data.coding_problems import ALL_PROBLEMS, PROBLEMS_BY_ID
+from app.models.user import User
 from app.schemas.coding import CodingProblem, CodingSubmitRequest, CodingSubmitResponse
 from app.schemas.common import ApiResponse
 from app.services.code_execution_service import CodeExecutionService
@@ -68,6 +69,7 @@ def get_problem(problem_id: str) -> ApiResponse[CodingProblem]:
 def submit_solution(
     payload: CodingSubmitRequest,
     judge: Annotated[CodingJudgeService, Depends(get_judge)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> ApiResponse[CodingSubmitResponse]:
     """Judge a submitted solution against all test cases."""
     result = judge.judge(payload)

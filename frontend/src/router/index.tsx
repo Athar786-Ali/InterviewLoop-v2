@@ -12,6 +12,7 @@ const InterviewSetupPage = lazy(() => import("../interview/InterviewSetupPage").
 const InterviewPage = lazy(() => import("../interview/InterviewPage").then((m) => ({ default: m.InterviewPage })));
 const CodingRoundPage = lazy(() => import("../code_execution/CodingRoundPage").then((m) => ({ default: m.CodingRoundPage })));
 const ReportPage = lazy(() => import("../report/ReportPage").then((m) => ({ default: m.ReportPage })));
+const SummaryPage = lazy(() => import("../interview/SummaryPage").then((m) => ({ default: m.SummaryPage })));
 
 function withSuspense(element: ReactElement) {
   return <Suspense fallback={<RouteLoader />}>{element}</Suspense>;
@@ -43,6 +44,10 @@ export const router = createBrowserRouter([
           {
             path: "/interview/:sessionId",
             element: withSuspense(<InterviewPage />),
+          },
+          {
+            path: "/interview/:sessionId/summary",
+            element: withSuspense(<SummaryPage />),
           },
           {
             path: "/coding",

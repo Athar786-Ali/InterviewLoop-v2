@@ -51,6 +51,25 @@
   gap: 8px;
 }
 
+.headerBtn {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: 12px;
+  padding: 5px 12px;
+  transition: background 0.15s;
+}
+
+.headerBtn:hover {
+  background: var(--bg-base);
+  border-color: var(--accent-red);
+  color: var(--accent-red);
+}
+
 .badge {
   align-items: center;
   background: var(--bg-elevated);
@@ -108,6 +127,14 @@
   gap: 6px;
   padding: 4px 12px;
   width: fit-content;
+}
+
+.timerBadge {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 8px;
 }
 
 .questionTopic {
@@ -410,6 +437,23 @@
 }
 
 .nextDifficulty strong { color: var(--text-secondary); }
+
+.speechMetrics {
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+  padding-top: 12px;
+}
+
+.speechMetrics span {
+  background: var(--bg-elevated);
+  border-radius: 99px;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 10px;
+}
 
 /* Spin animation */
 .spin { animation: spin 1s linear infinite; }

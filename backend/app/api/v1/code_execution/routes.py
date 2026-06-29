@@ -2,7 +2,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from app.api.v1.dependencies import get_code_execution_service
+from app.api.v1.dependencies import get_code_execution_service, get_current_user
+from app.models.user import User
 from app.schemas.code_execution import CodeExecutionRequest, CodeExecutionResult, RuntimeSpec
 from app.schemas.common import ApiResponse
 from app.services.code_execution_service import CodeExecutionService
@@ -21,5 +22,6 @@ def runtimes(
 def run_code(
     payload: CodeExecutionRequest,
     service: Annotated[CodeExecutionService, Depends(get_code_execution_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> ApiResponse[CodeExecutionResult]:
     return ApiResponse(data=service.execute(payload), message="Execution complete.")

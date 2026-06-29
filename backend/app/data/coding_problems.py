@@ -594,6 +594,74 @@ PERMUTATIONS = CodingProblem(
 )
 
 # ─────────────────────────────────────────────────────────────
+#  NEW PROBLEMS (PHASE 3 EXPANSION)
+# ─────────────────────────────────────────────────────────────
+MERGE_INTERVALS = CodingProblem(
+    id="merge-intervals",
+    title="Merge Intervals",
+    difficulty="medium",
+    category="arrays",
+    tags=["arrays", "sorting", "dsa"],
+    problem_statement="""Given an array of intervals where intervals[i] = [starti, endi], merge all overlapping intervals, and return an array of the non-overlapping intervals that cover all the intervals in the input.
+
+Print the merged intervals space-separated in [start,end] format.""",
+    constraints=["1 ≤ intervals.length ≤ 10⁴", "0 ≤ starti ≤ endi ≤ 10⁴"],
+    examples=[
+        {"input": "1,3 2,6 8,10 15,18", "output": "[1,6] [8,10] [15,18]", "explanation": "Intervals [1,3] and [2,6] overlap, so they merge into [1,6]."},
+        {"input": "1,4 4,5", "output": "[1,5]"}
+    ],
+    starter_code={"python": "def merge(intervals):\n    # Sort intervals first\n    pass\n\nraw_intervals = input().split()\nintervals = [list(map(int, x.split(','))) for x in raw_intervals]\nmerged = merge(intervals)\nprint(' '.join(f'[{s},{e}]' for s, e in merged))\n"},
+    test_cases=[
+        TestCase(label="Standard merge", input="1,3 2,6 8,10 15,18", expected_output="[1,6] [8,10] [15,18]"),
+        TestCase(label="Consecutive overlap", input="1,4 4,5", expected_output="[1,5]"),
+        TestCase(label="Full overlap", input="1,4 2,3", expected_output="[1,4]"),
+    ],
+)
+
+VALID_SUDOKU = CodingProblem(
+    id="valid-sudoku",
+    title="Valid Sudoku",
+    difficulty="medium",
+    category="arrays",
+    tags=["arrays", "hash-map", "matrix", "dsa"],
+    problem_statement="""Determine if a 9 x 9 Sudoku board is valid. Only the filled cells need to be validated according to the following rules:
+1. Each row must contain the digits 1-9 without repetition.
+2. Each column must contain the digits 1-9 without repetition.
+3. Each of the nine 3 x 3 sub-boxes of the grid must contain the digits 1-9 without repetition.
+
+Empty cells are represented by '.'. Return True if valid, False otherwise.""",
+    constraints=["board.length == 9", "board[i].length == 9", "board[i][j] is a digit or '.'"],
+    examples=[{"input": "5 3 . . 7 . . . .\n6 . . 1 9 5 . . .\n. 9 8 . . . . 6 .\n8 . . . 6 . . . 3\n4 . . 8 . 3 . . 1\n7 . . . 2 . . . 6\n. 6 . . . . 2 8 .\n. . . 4 1 9 . . 5\n. . . . 8 . . 7 9", "output": "True"}],
+    starter_code={"python": "def is_valid_sudoku(board):\n    # Use sets to track seen numbers in rows, cols, and 3x3 boxes\n    pass\n\nboard = [input().split() for _ in range(9)]\nprint(is_valid_sudoku(board))\n"},
+    test_cases=[
+        TestCase(label="Valid Board", input="5 3 . . 7 . . . .\n6 . . 1 9 5 . . .\n. 9 8 . . . . 6 .\n8 . . . 6 . . . 3\n4 . . 8 . 3 . . 1\n7 . . . 2 . . . 6\n. 6 . . . . 2 8 .\n. . . 4 1 9 . . 5\n. . . . 8 . . 7 9", expected_output="True"),
+        TestCase(label="Invalid Row", input="8 3 8 . 7 . . . .\n6 . . 1 9 5 . . .\n. 9 8 . . . . 6 .\n8 . . . 6 . . . 3\n4 . . 8 . 3 . . 1\n7 . . . 2 . . . 6\n. 6 . . . . 2 8 .\n. . . 4 1 9 . . 5\n. . . . 8 . . 7 9", expected_output="False"),
+    ],
+)
+
+WORD_SEARCH = CodingProblem(
+    id="word-search",
+    title="Word Search",
+    difficulty="medium",
+    category="graphs",
+    tags=["graphs", "backtracking", "dfs", "dsa"],
+    problem_statement="""Given an `m x n` grid of characters `board` and a string `word`, return `True` if `word` exists in the grid.
+
+The word can be constructed from letters of sequentially adjacent cells, where adjacent cells are horizontally or vertically neighboring. The same letter cell may not be used more than once.
+
+Input: First line is the target word. Next lines are the grid rows.""",
+    constraints=["1 ≤ m, n ≤ 6", "1 ≤ word.length ≤ 15", "board and word consists of only lowercase and uppercase English letters."],
+    examples=[
+        {"input": "ABCCED\nA B C E\nS F C S\nA D E E", "output": "True"}
+    ],
+    starter_code={"python": "def exist(board, word):\n    # DFS backtracking from every cell\n    pass\n\nlines = open(0).read().strip().split('\\n')\nword = lines[0]\nboard = [line.split() for line in lines[1:]]\nprint(exist(board, word))\n"},
+    test_cases=[
+        TestCase(label="Found", input="ABCCED\nA B C E\nS F C S\nA D E E", expected_output="True"),
+        TestCase(label="Not found", input="ABCB\nA B C E\nS F C S\nA D E E", expected_output="False"),
+    ],
+)
+
+# ─────────────────────────────────────────────────────────────
 #  PROBLEM REGISTRY
 # ─────────────────────────────────────────────────────────────
 ALL_PROBLEMS: list[CodingProblem] = [
@@ -623,6 +691,9 @@ ALL_PROBLEMS: list[CodingProblem] = [
     COUNT_BITS,
     FIBONACCI,
     PERMUTATIONS,
+    MERGE_INTERVALS,
+    VALID_SUDOKU,
+    WORD_SEARCH,
 ]
 
 PROBLEMS_BY_ID: dict[str, CodingProblem] = {p.id: p for p in ALL_PROBLEMS}
